@@ -32,6 +32,7 @@ library(summarytools)
 
 ## import data set (70% to train data while 30% to test data)
 ```{r}
+#input the document
 expect_df_nores = read_csv("./Life Expectancy Data.csv") %>% 
   data.frame() %>% 
   na.omit() %>% 
@@ -44,10 +45,16 @@ expect_df = cbind(expect_df_nores, expect_df_res) %>%
   data.frame() %>% 
   relocate(Status)
 
+#get a subset of 496 rows
+set.seed(2022)
+subsetRows <- createDataPartition(expect_df$Life.expectancy, p = .3, list = F)
+expect_df <- expect_df[subsetRows,]
 expect_df2 <- model.matrix(Life.expectancy ~ ., expect_df)[ ,-1]
 
+#assign 70% to the training set and the rest 30% to the test set 
 set.seed(2022)
 trainRows <- createDataPartition(expect_df$Life.expectancy, p = .7, list = F)
+
 train <- expect_df[trainRows,]
 x1 <- expect_df2[trainRows,]
 y1 <- expect_df$Life.expectancy[trainRows]
@@ -126,12 +133,13 @@ ridge.fit <- train(x = x1,
                    y = y1,
                    method = "glmnet",
                    tuneGrid = expand.grid(alpha = 0, 
-                                          lambda = exp(seq(5, -2, length=100))),
+                                          lambda = exp(seq(2, -3, length=100))),
                    trControl = ctrl)
 
 plot(ridge.fit, xTrans = log)
 
 ridge.fit$bestTune
+log(ridge.fit$bestTune)
 
 # coefficients in the final model
 coef(ridge.fit$finalModel, s = ridge.fit$bestTune$lambda)
@@ -149,12 +157,13 @@ lasso.fit <- train(x = x1,
                    y = y1,
                    method = "glmnet",
                    tuneGrid = expand.grid(alpha = 1, 
-                                          lambda = exp(seq(5, -2, length=100))),
+                                          lambda = exp(seq(0, -8, length=100))),
                    trControl = ctrl)
 
 plot(lasso.fit, xTrans = log)
 
 lasso.fit$bestTune
+log(lasso.fit$bestTune)
 
 coef(lasso.fit$finalModel, lasso.fit$bestTune$lambda)
 
@@ -170,12 +179,13 @@ set.seed(2022)
 enet.fit <- train(x = x1,
                   y = y1,
                   method = "glmnet",
-                  tuneGrid = expand.grid(alpha = seq(0, 1, length = 21), 
-                                         lambda = exp(seq(5, -2, length = 50))),
+                  tuneGrid = expand.grid(alpha = seq(-3, 1, length = 21), 
+                                         lambda = exp(seq(0, -10, length = 50))),
                   trControl = ctrl
                   )
 
 enet.fit$bestTune
+log(enet.fit$bestTune)
 
 myCol <- rainbow(25)
 myPar <- list(superpose.symbol = list(col = myCol),
