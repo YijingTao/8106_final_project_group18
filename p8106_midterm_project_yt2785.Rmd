@@ -28,6 +28,22 @@ library(ggplot2)
 library(lasso2)
 library(vip)
 library(summarytools)
+library(ISLR)
+library(caret)
+library(vip)
+library(pdp)
+library(lime)
+library(mlbench)
+library(ISLR)
+library(caret)
+library(e1071)
+library(kernlab)
+library(factoextra)
+library(gridExtra)
+library(corrplot)
+library(RColorBrewer) 
+library(gplots)
+library(jpeg)
 ```
 
 ## import data set (70% to train data while 30% to test data)
@@ -329,3 +345,140 @@ grid.arrange(p1, p2, p3, p4, p5, p6, p7, ncol = 3)
 
 ```
 
+## Random forest
+```{r}
+rf.grid <- expand.grid(mtry = 1:6,
+                       splitrule = "variance",
+                       min.node.size = 1:6)
+set.seed(2022)
+rf.fit <- train(Life.expectancy~., train, 
+                method = "ranger",
+                tuneGrid = rf.grid,
+                trControl = ctrl)
+
+#test error
+rf.pred <- predict(rf.fit, newdata = test[,1:18])
+rf_te <- mean((y2 - rf.pred)^2)
+rf_te
+```
+
+### Variable importance
+```{r}
+set.seed(2022)
+vip(rf.fit, 
+    method = "permute", 
+    train = train,
+    target = "Life.expectancy",
+    metric = "RMSE",
+    nsim = 10,
+    pred_wrapper = predict,
+    geom = "boxplot", 
+    all_permutations = TRUE,
+    mapping = aes_string(fill = "Variable")) 
+```
+
+### pdp ?????
+```{r, fig.width = 8, fig.height = 4}
+pdp1.rf <- rf.fit %>% 
+  partial(pred.var = c("CRBI")) %>%
+  autoplot(train = train, rug = TRUE) 
+
+pdp2.rf <- rf.fit %>% 
+  partial(pred.var = c("CRBI","CAtBat"), chull = TRUE) %>%
+  autoplot(train = train, rug = TRUE) 
+
+grid.arrange(pdp1.rf, pdp2.rf, nrow = 1)
+```
+
+### Individual conditional expectation (ICE) curves ???
+```{r, fig.width = 8, fig.height = 4}
+ice1.rf <- rf.fit %>% 
+  partial(pred.var = "CRBI", 
+          grid.resolution = 100,
+          ice = TRUE) %>%
+  autoplot(train = expect_df, alpha = .1) +
+  ggtitle("ICE, not centered") 
+
+ice2.rf <- rf.fit %>% 
+  partial(pred.var = "CRBI", 
+          grid.resolution = 100,
+          ice = TRUE) %>%
+  autoplot(train = expect_df, alpha = .1, 
+           center = TRUE) +
+  ggtitle("ICE, centered") 
+
+
+grid.arrange(ice1.rf, ice2.rf, nrow = 1)
+```
+
+### lime ????
+```{r, warning=FALSE, fig.height = 10}
+explainer.rf <- lime(train[,1:18], rf.fit)
+
+new_obs <- test[,1:18][1:10,]
+explanation.obs <- explain(new_obs,
+                           explainer.rf, 
+                           n_features = 10)
+
+plot_features(explanation.obs)
+plot_explanations(explanation.obs)
+```
+
+
+# K means clustering
+```{r}
+dat <- scale(expect_df[,-1])
+```
+
+
+```{r, fig.height=3.5}
+fviz_nbclust(dat,
+             FUNcluster = kmeans,
+             method = "silhouette")
+
+km <- kmeans(dat, centers = 2, nstart = 20)
+```
+
+```{r}
+km_vis <- fviz_cluster(list(data = dat, cluster = km$cluster), 
+                       ellipse.type = "convex", 
+                       geom = c("point","text"),
+                       labelsize = 5, 
+                       palette = "Dark2") + labs(title = "K-means") 
+
+km_vis
+```
+
+# Hierarchical clustering
+```{r}
+hc.complete <- hclust(dist(dat), method = "complete")
+```
+
+```{r, fig.width=7}
+fviz_dend(hc.complete, k = 4,        
+          cex = 0.3, 
+          palette = "jco", 
+          color_labels_by_k = TRUE,
+          rect = TRUE, rect_fill = TRUE, rect_border = "jco",
+          labels_track_height = 2.5)
+
+ind4.complete <- cutree(hc.complete, 4)
+
+# Who are in the fourth cluster?
+dat[ind4.complete == 4,]
+```
+
+To display more details, we show the heatmap of the data.
+
+```{r, fig.width = 12, fig.height=7}
+#display.brewer.all(n=NULL, type="all", select=NULL, exact.n=TRUE)
+#col1 <- colorRampPalette(brewer.pal(9, "GnBu"))(100)
+#col2 <- colorRampPalette(brewer.pal(3, "Spectral"))(2)
+#
+#heatmap.2(t(dat), 
+#          col = col1, keysize=.8, key.par = list(cex=.5),
+#          trace = "none", key = TRUE, cexCol = 0.75, 
+#          labCol = as.character(dat[,1]),
+#          ColSideColors = col2[as.numeric(dat[,"Legendary"])+1],
+#          margins = c(10, 10))
+```
