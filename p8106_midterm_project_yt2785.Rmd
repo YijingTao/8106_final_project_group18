@@ -46,6 +46,7 @@ library(gplots)
 library(jpeg)
 library(klaR)
 library(pROC)
+library(rpart)
 ```
 
 ## import data set (70% to train data while 30% to test data)
@@ -91,28 +92,67 @@ dfSummary(dat_df[,-1])
 ```
 
 ```{r, fig.height = 4}
-diag <- train[,31]
-train_mean <- cbind(train[,1:10],diag)
-train_se <- cbind(train[,11:20],diag)
-train_worst <- cbind(train[,21:30],diag)
-partimat(as.factor(diag) ~ ., 
-         data = train_mean, method = "lda")
-partimat(as.factor(diag) ~ ., 
-         data = train_se, method = "lda")
-partimat(as.factor(diag) ~ ., 
-         data = train_worst, method = "lda")
-```
+train_radius <- train %>% 
+  dplyr::select(radius_mean,
+                radius_se,
+                radius_worst,diagnosis)
+train_texture <- train %>% 
+  dplyr::select(texture_mean,
+                texture_se,
+                texture_worst,diagnosis)
+train_perimeter <- train %>% 
+  dplyr::select(perimeter_mean,
+                perimeter_se,
+                perimeter_worst,diagnosis)
+train_area <- train %>% 
+  dplyr::select(area_mean,
+                area_se,
+                area_worst,diagnosis)
+train_smoothness <- train %>% 
+  dplyr::select(smoothness_mean,
+                smoothness_se,
+                smoothness_worst,diagnosis)
+train_compactness <- train %>% 
+  dplyr::select(compactness_mean,
+                compactness_se,
+                compactness_worst,diagnosis)
+train_concavity <- train %>% 
+  dplyr::select(concavity_mean,
+                concavity_se,
+                concavity_worst,diagnosis)
+train_concave_points <- train %>% 
+  dplyr::select(concave_points_mean,
+                concave_points_se,
+                concave_points_worst,diagnosis)
+train_symmetry <- train %>% 
+  dplyr::select(symmetry_mean,
+                symmetry_se,
+                symmetry_worst,diagnosis)
+train_fractal_dimension <- train %>% 
+  dplyr::select(fractal_dimension_mean,
+                fractal_dimension_se,
+                fractal_dimension_worst,diagnosis)
 
-```{r}
-theme1 <- transparentTheme(trans = .4)
-trellis.par.set(theme1)
-
-featurePlot(x = train, 
-            y = train$diagnosis,
-            scales = list(x = list(relation = "free"), 
-                          y = list(relation = "free")),
-            plot = "density", pch = "|", 
-            auto.key = list(columns = 2))
+partimat(diagnosis ~ ., 
+         data = train_radius, method = "lda")
+partimat(diagnosis ~ ., 
+         data = train_texture, method = "lda")
+partimat(diagnosis ~ ., 
+         data = train_perimeter, method = "lda")
+partimat(diagnosis ~ ., 
+         data = train_area, method = "lda")
+partimat(diagnosis ~ ., 
+         data = train_smoothness, method = "lda")
+partimat(diagnosis ~ ., 
+         data = train_compactness, method = "lda")
+partimat(diagnosis ~ ., 
+         data = train_concavity, method = "lda")
+partimat(diagnosis ~ ., 
+         data = train_concave_points, method = "lda")
+partimat(diagnosis ~ ., 
+         data = train_symmetry, method = "lda")
+partimat(diagnosis ~ ., 
+         data = train_fractal_dimension, method = "lda")
 ```
 
 ## glm model
@@ -130,6 +170,12 @@ glm_matrix <- confusionMatrix(data = test.pred.prob.glm,
                 reference = test$diagnosis,
                 positive = "pos")
 glm_matrix 
+```
+
+```{r eval=FALSE, include=FALSE}
+save(model.glm, file = "./result/model.glm.RData")
+
+load("./result/model.glm.RData")
 ```
 
 ## Penalized logistic regression
@@ -160,6 +206,11 @@ glmn_matrix <- confusionMatrix(data = test.pred.prob.glmn,
 glmn_matrix 
 ```
 
+```{r eval=FALSE, include=FALSE}
+save(model.glmn, file = "./result/model.glmn.RData")
+
+load("./result/model.glmn.RData")
+```
 ## GAM
 
 ```{r}
@@ -182,6 +233,11 @@ gam_matrix <- confusionMatrix(data = test.pred.prob.gam,
 gam_matrix 
 ```
 
+```{r eval=FALSE, include=FALSE}
+save(model.gam, file = "./result/model.gam.RData")
+
+load("./result/model.gam.RData")
+```
 ## MARS
 
 ```{r}
@@ -209,6 +265,12 @@ mars_matrix <- confusionMatrix(data = test.pred.prob.mars,
 mars_matrix 
 ```
 
+```{r eval=FALSE, include=FALSE}
+save(model.mars, file = "./result/model.mars.RData")
+
+load("./result/model.mars.RData")
+```
+
 ## LDA
 ```{r}
 set.seed(2022)
@@ -225,6 +287,11 @@ lda_matrix <- confusionMatrix(data = test.pred.prob.lda,
 lda_matrix 
 ```
 
+```{r eval=FALSE, include=FALSE}
+save(model.lda, file = "./result/model.lda.RData")
+
+load("./result/model.lda.RData")
+```
 ## QDA
 
 ```{r}
@@ -240,6 +307,12 @@ qda_matrix <- confusionMatrix(data = test.pred.prob.qda,
                 reference = test$diagnosis,
                 positive = "pos")
 qda_matrix 
+```
+
+```{r eval=FALSE, include=FALSE}
+save(model.qda, file = "./result/model.qda.RData")
+
+load("./result/model.qda.RData")
 ```
 
 ## Naive Bayes (NB)
@@ -259,6 +332,12 @@ model.nb <- train(x = train[,1:30],
 plot(model.nb)
 ```
 
+```{r eval=FALSE, include=FALSE}
+save(model.nb, file = "./result/model.nb.RData")
+
+load("./result/model.nb.RData")
+```
+
 ## tree
 ```{r}
 set.seed(2022)
@@ -272,6 +351,11 @@ ggplot(rpart.fit, highlight = TRUE)
 rpart.plot(rpart.fit$finalModel)
 ```
 
+```{r eval=FALSE, include=FALSE}
+save(rpart.fit, file = "./result/model.rpart.RData")
+
+load("./result/model.rpart.RData")
+```
 ### CIT
 
 ```{r}
@@ -283,6 +367,12 @@ ctree.fit <- train(diagnosis ~ . ,
                    metric = "ROC",
                    trControl = ctrl)
 ggplot(ctree.fit, highlight = TRUE)
+```
+
+```{r eval=FALSE, include=FALSE}
+save(ctree.fit, file = "./result/model.ctree.RData")
+
+load("./result/model.ctree.RData")
 ```
 
 ```{r, fig.width=15, fig.height=6}
@@ -306,9 +396,14 @@ rf.fit <- train(diagnosis ~ . ,
 
 ggplot(rf.fit, highlight = TRUE)
 
-rf.pred <- predict(rf.fit, newdata = dat[-rowTrain,], type = "prob")[,1]
+rf.pred <- predict(rf.fit, newdata = test, type = "prob")[,1]
 ```
 
+```{r eval=FALSE, include=FALSE}
+save(rf.fit, file = "./result/model.rf.RData")
+
+load("./result/model.rf.RData")
+```
 ### AdaBoost
 
 ```{r}
@@ -332,6 +427,12 @@ gbmA.pred <- predict(gbmA.fit, newdata = dat[-rowTrain,], type = "prob")[,1]
 ```
 
 
+```{r eval=FALSE, include=FALSE}
+save(gbmA.fit, file = "./result/model.gbmA.RData")
+
+load("./result/model.gbmA.RData")
+```
+
 ```{r}
 resamp <- resamples(list(rf = rf.fit, 
                          gbmA = gbmA.fit))
@@ -342,8 +443,8 @@ summary(resamp)
 ```{r}
 # kernlab
 set.seed(2022)
-svml.fit <- train(diabetes ~ . , 
-                  data = dat[rowTrain,], 
+svml.fit <- train(diagnosis ~ . , 
+                  data = train, 
                   method = "svmLinear",
                   # preProcess = c("center", "scale"),
                   tuneGrid = data.frame(C = exp(seq(-5,2,len=50))),
@@ -362,15 +463,27 @@ svml.fit2 <- train(diabetes ~ . ,
 plot(svml.fit2, highlight = TRUE, xTrans = log)
 ```
 
+```{r eval=FALSE, include=FALSE}
+save(svml.fit, file = "./result/model.svml.RData")
+
+load("./result/model.svml.RData")
+```
+
+```{r eval=FALSE, include=FALSE}
+save(svml.fit2, file = "./result/model.svml2.RData")
+
+load("./result/model.svml2.RData")
+```
+
 ## radial
 ```{r, fig.width=15, fig.height=8}
 svmr.grid <- expand.grid(C = exp(seq(-1,4,len=20)),
                          sigma = exp(seq(-6,-2,len=20)))
 
 # tunes over both cost and sigma
-set.seed(1)             
-svmr.fit <- train(diabetes ~ . , dat, 
-                  subset = rowTrain,
+set.seed(2022)             
+svmr.fit <- train(diagnosis ~ . ,
+                  train, 
                   method = "svmRadialSigma",
                   tuneGrid = svmr.grid,
                   trControl = ctrl)
@@ -382,29 +495,23 @@ myPar <- list(superpose.symbol = list(col = myCol),
 plot(svmr.fit, highlight = TRUE, par.settings = myPar)
 
 # tune over cost and uses a single value of sigma based on kernlab's sigest function
-set.seed(1)             
-svmr.fit2 <- train(diabetes ~ . , dat, 
-                   subset = rowTrain,
+set.seed(2022)             
+svmr.fit2 <- train(diagnosis ~ . ,
+                   train, 
                    method = "svmRadialCost",
                    tuneGrid = data.frame(C = exp(seq(-3,3,len=20))),
                    trControl = ctrl)
 
-# Platt¡¯s probabilistic outputs; use with caution
-set.seed(1)             
-svmr.fit3 <- train(diabetes ~ . , dat, 
-                   subset = rowTrain,
+# Platt??s probabilistic outputs; use with caution
+set.seed(2022)             
+svmr.fit3 <- train(diagnosis ~ . ,
+                   train, 
                    method = "svmRadialCost",
                    tuneGrid = data.frame(C = exp(seq(-3,3,len=20))),
                    trControl = ctrl,
                    prob.model = TRUE) 
 # predict(svmr.fit3, newdata = x_test, type = "prob")
 
-set.seed(1)             
-rpart.fit <- train(diabetes ~ . , dat, 
-                   subset = rowTrain,
-                   method = "rpart",
-                   tuneLength = 50,
-                   trControl = ctrl)
 ```
 
 
