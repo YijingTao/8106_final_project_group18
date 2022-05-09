@@ -44,18 +44,19 @@ library(corrplot)
 library(RColorBrewer) 
 library(gplots)
 library(jpeg)
+library(klaR)
+library(pROC)
 ```
 
 ## import data set (70% to train data while 30% to test data)
 ```{r}
 dat_df_nores = read_csv("./data.csv")%>% 
-  data.frame() %>% 
+  na.omit() %>% 
   dplyr::select(-diagnosis,-id)
 dat_df_res = read_csv("./data.csv") %>% 
-  data.frame() %>% 
+  na.omit() %>% 
   dplyr::select(diagnosis)
-dat_df = cbind(dat_df_nores, dat_df_res) %>% 
-  data.frame() 
+dat_df = cbind(dat_df_nores, dat_df_res) 
 
 dat_df2 <- model.matrix(diagnosis ~ ., dat_df)[ ,-1]
 #assign 70% to the training set and the rest 30% to the test set 
@@ -64,14 +65,24 @@ trainRows <- createDataPartition(dat_df$diagnosis, p = .7, list = F)
 
 train <- dat_df[trainRows,]
 x1 <- dat_df2[trainRows,]
-y1 <- dat_df$diagnosis[trainRows]
+train$diagnosis[which(train$diagnosis =='M')] <- 'neg'
+train$diagnosis[which(train$diagnosis =='B')] <- 'pos'
+train <- train %>% 
+  mutate(diagnosis = as.factor(diagnosis))
+y1 <- train$diagnosis
 
 # matrix of predictors (glmnet uses input matrix)
 test <- dat_df[-trainRows,]
 x2 <- dat_df2[-trainRows,]
-y2 <- dat_df$diagnosis[-trainRows]
+test$diagnosis[which(test$diagnosis =='M')] <- 'neg'
+test$diagnosis[which(test$diagnosis =='B')] <- 'pos'
+test <- test %>% 
+  mutate(diagnosis = as.factor(diagnosis))
+y2 <- test$diagnosis
 
-ctrl <- trainControl(method = "cv", number = 10)
+ctrl <- trainControl(method = "repeatedcv",
+                     summaryFunction = twoClassSummary,
+                     classProbs = TRUE)
 ```
 
 ## visualization
@@ -80,282 +91,322 @@ dfSummary(dat_df[,-1])
 ```
 
 ```{r, fig.height = 4}
-train_M <- train %>% 
-  filter(diagnosis == "M")
-train_B <- train %>% 
-  filter(diagnosis == "B")
-
-mfrow=c(2,30)
-boxplot(train_M[,1])
-boxplot(train_B[,1])
-boxplot(train_M[,2])
-boxplot(train_B[,2])
-boxplot(train_M[,3])
-boxplot(train_B[,3])
-boxplot(train_M[,4])
-boxplot(train_B[,4])
-boxplot(train_M[,5])
-boxplot(train_B[,5])
-boxplot(train_M[,6])
-boxplot(train_B[,6])
-boxplot(train_M[,1])
-boxplot(train_B[,1])
-boxplot(train_M[,1])
-boxplot(train_B[,1])
+diag <- train[,31]
+train_mean <- cbind(train[,1:10],diag)
+train_se <- cbind(train[,11:20],diag)
+train_worst <- cbind(train[,21:30],diag)
+partimat(as.factor(diag) ~ ., 
+         data = train_mean, method = "lda")
+partimat(as.factor(diag) ~ ., 
+         data = train_se, method = "lda")
+partimat(as.factor(diag) ~ ., 
+         data = train_worst, method = "lda")
 ```
 
-## KNN model
 ```{r}
-kGrid <- expand.grid(k = seq(from = 1, to = 20, by = 1))
-set.seed(2022)
-knn.fit <- train(Life.expectancy ~., 
-                data = train, 
-                method = "knn",
-                trControl = ctrl,
-                tuneGrid = kGrid)
+theme1 <- transparentTheme(trans = .4)
+trellis.par.set(theme1)
 
-ggplot(knn.fit)
-knn.fit$bestTune
-
-knn.pred <- predict(knn.fit, newdata = test[,1:18])
-# test error
-knn_te <- mean((knn.pred - y2)^2)
-knn_te
+featurePlot(x = train, 
+            y = train$diagnosis,
+            scales = list(x = list(relation = "free"), 
+                          y = list(relation = "free")),
+            plot = "density", pch = "|", 
+            auto.key = list(columns = 2))
 ```
 
-## linear model
+## glm model
 ```{r}
+contrasts(train$diagnosis)
 set.seed(2022)
-lm.fit <- train(Life.expectancy ~ ., 
-                data = train,
-                method = "lm",
-                trControl = ctrl)
-
-lm.pred <- predict(lm.fit, newdata = test[,1:18])
-# test error
-lm_te <- mean((lm.pred - y2)^2)
-lm_te
-```
-
-## Ridge
-```{r}
-set.seed(2022)
-ridge.fit <- train(x = x1, 
-                   y = y1,
-                   method = "glmnet",
-                   tuneGrid = expand.grid(alpha = 0, 
-                                          lambda = exp(seq(2, -3, length=100))),
+model.glm <- train(x = train[,1:30],
+                   y = train$diagnosis,
+                   method = "glm",
+                   metric = "ROC",
                    trControl = ctrl)
 
-plot(ridge.fit, xTrans = log)
-
-ridge.fit$bestTune
-log(ridge.fit$bestTune)
-
-# coefficients in the final model
-coef(ridge.fit$finalModel, s = ridge.fit$bestTune$lambda)
-
-ridge.pred <- predict(ridge.fit, newdata = x2)
-# test error
-ridge_te <- mean((ridge.pred - y2)^2)
-ridge_te
+test.pred.prob.glm <- predict(model.glm, newdata = test)
+glm_matrix <- confusionMatrix(data = test.pred.prob.glm,
+                reference = test$diagnosis,
+                positive = "pos")
+glm_matrix 
 ```
 
-## Lasso
+## Penalized logistic regression
 ```{r}
+glmnGrid <- expand.grid(.alpha = seq(0, 1, length = 21),
+                        .lambda = exp(seq(-8, -1, length = 50)))
 set.seed(2022)
-lasso.fit <- train(x = x1, 
-                   y = y1,
-                   method = "glmnet",
-                   tuneGrid = expand.grid(alpha = 1, 
-                                          lambda = exp(seq(0, -8, length=100))),
-                   trControl = ctrl)
+model.glmn <- train(x = train[,1:30],
+                    y = train$diagnosis,
+                    method = "glmnet",
+                    tuneGrid = glmnGrid,
+                    metric = "ROC",
+                    trControl = ctrl)
 
-plot(lasso.fit, xTrans = log)
+model.glmn$bestTune
+log(model.glmn$bestTune$lambda)
 
-lasso.fit$bestTune
-log(lasso.fit$bestTune)
-
-coef(lasso.fit$finalModel, lasso.fit$bestTune$lambda)
-
-lasso.pred <- predict(lasso.fit, newdata = x2)
-# test error
-lasso_te <- mean((lasso.pred - y2)^2)
-lasso_te
-```
-
-## Elastic net
-```{r}
-set.seed(2022)
-enet.fit <- train(x = x1,
-                  y = y1,
-                  method = "glmnet",
-                  tuneGrid = expand.grid(alpha = seq(-3, 1, length = 21), 
-                                         lambda = exp(seq(0, -10, length = 50))),
-                  trControl = ctrl
-                  )
-
-enet.fit$bestTune
-log(enet.fit$bestTune)
-
-myCol <- rainbow(25)
+myCol<- rainbow(25)
 myPar <- list(superpose.symbol = list(col = myCol),
-                    superpose.line = list(col = myCol))
+              superpose.line = list(col = myCol))
 
-plot(enet.fit, par.settings = myPar)
+plot(model.glmn, par.settings = myPar, xTrans = function(x) log(x))
 
-coef(enet.fit$finalModel, enet.fit$bestTune$lambda)
-
-enet.pred <- predict(enet.fit, newdata = x2)
-# test error
-enet_te <- mean((enet.pred - y2)^2)
-enet_te
-```
-
-## PCR
-```{r}
-set.seed(2022)
-pcr.fit <- train(x = x1, 
-                 y = y1,
-                  method = "pcr",
-                  tuneGrid = data.frame(ncomp = 1:18),
-                  trControl = ctrl,
-                 preProcess = c("center", "scale"))
-
-pcr.fit$bestTune
-
-# test error
-pcr.pred <- predict(pcr.fit, newdata = x2)
-pcr_te <- mean((y2 - pcr.pred)^2)
-pcr_te
-ggplot(pcr.fit, highlight = TRUE) + theme_bw()
-```
-
-## PLS
-```{r}
-set.seed(2022)
-pls.fit <- train(x = x1, 
-                 y = y1,
-                 method = "pls",
-                 tuneGrid = data.frame(ncomp = 1:18),
-                 trControl = ctrl,
-                 preProcess = c("center", "scale"))
-
-pls.fit$bestTune
-
-#test error
-pls.pred <- predict(pls.fit, newdata = x2)
-pls_te <- mean((y2 - pls.pred)^2)
-pls_te
-ggplot(pls.fit, highlight = TRUE)
+test.pred.prob.glmn <- predict(model.glmn, newdata = test)
+glmn_matrix <- confusionMatrix(data = test.pred.prob.glmn,
+                reference = test$diagnosis,
+                positive = "pos")
+glmn_matrix 
 ```
 
 ## GAM
+
 ```{r}
 set.seed(2022)
-gam.fit <- train(x = x1, 
-                 y = y1,
-                 method = "gam",
-                 tuneGrid = data.frame(method = "GCV.Cp", select = c(TRUE, FALSE)),
-                 trControl = ctrl)
+model.gam <- train(x = train[,1:30],
+                   y = train$diagnosis,
+                   method = "gam",
+                   metric = "ROC",
+                   trControl = ctrl)
 
-gam.fit$bestTune
 
-gam.fit$finalModel
+model.gam$finalModel
+log(model.gam$finalModele$lambda)
+plot(model.gam$finalModel, select = 3)
 
-#test error
-gam.pred <- predict(gam.fit, newdata = x2)
-gam_te <- mean((y2 - gam.pred)^2)
-gam_te
+test.pred.prob.gam<- predict(model.gam, newdata = test)
+gam_matrix <- confusionMatrix(data = test.pred.prob.gam,
+                reference = test$diagnosis,
+                positive = "pos")
+gam_matrix 
 ```
 
 ## MARS
-```{r}
-mars_grid <- expand.grid(degree = 1:5, 
-                         nprune = 10:29)
 
+```{r}
 set.seed(2022)
-mars.fit <- train(x = x1, 
-                  y = y1,
-                  method = "earth",
-                  tuneGrid = mars_grid,
+model.mars <- train(x = train[,1:30],
+                    y = train$diagnosis,
+                    method = "earth",
+                    tuneGrid = expand.grid(degree = 1:4, 
+                                           nprune = 2:20),
+                    metric = "ROC",
+                    trControl = ctrl)
+
+plot(model.mars)
+
+coef(model.mars$finalModel) 
+
+pdp::partial(model.mars, pred.var = c("age"), grid.resolution = 200) %>% autoplot()
+
+vip(model.mars$finalModel)
+
+test.pred.prob.mars <- predict(model.mars, newdata = test)
+mars_matrix <- confusionMatrix(data = test.pred.prob.mars,
+                reference = test$diagnosis,
+                positive = "pos")
+mars_matrix 
+```
+
+## LDA
+```{r}
+set.seed(2022)
+model.lda <- train(x = train[,1:30],
+                   y = train$diagnosis,
+                   method = "lda",
+                   metric = "ROC",
+                   trControl = ctrl)
+
+test.pred.prob.lda <- predict(model.lda, newdata = test)
+lda_matrix <- confusionMatrix(data = test.pred.prob.lda,
+                reference = test$diagnosis,
+                positive = "pos")
+lda_matrix 
+```
+
+## QDA
+
+```{r}
+set.seed(2022)
+model.qda <- train(x = train[,1:30],
+                   y = train$diagnosis,
+                   method = "qda",
+                   metric = "ROC",
+                   trControl = ctrl)
+
+test.pred.prob.qda <- predict(model.qda, newdata = test)
+qda_matrix <- confusionMatrix(data = test.pred.prob.qda,
+                reference = test$diagnosis,
+                positive = "pos")
+qda_matrix 
+```
+
+## Naive Bayes (NB)
+```{r, warning=FALSE}
+nbGrid <- expand.grid(usekernel = c(FALSE,TRUE),
+                      fL = 1, 
+                      adjust = seq(.2, 3, by = .2))
+
+set.seed(11)
+model.nb <- train(x = train[,1:30],
+                  y = train$diagnosis,
+                  method = "nb",
+                  tuneGrid = nbGrid,
+                  metric = "ROC",
                   trControl = ctrl)
 
-ggplot(mars.fit)
-
-mars.fit$bestTune
-
-coef(mars.fit$finalModel) 
-
-#test error
-mars.pred <- predict(mars.fit, newdata = x2)
-mars_te <- mean((y2 - mars.pred)^2)
-mars_te
+plot(model.nb)
 ```
 
-## Comparing different models
+## tree
 ```{r}
-model <- c("KNN","LN","RIDGE","LASSO","ENET","PCR","PLS","GAM","MARS")
-test_error <- c(knn_te,lm_te,ridge_te,lasso_te,enet_te,pcr_te,pls_te,gam_te,mars_te)
-test_error_df <- cbind(model, test_error)
-test_error_df <- as.data.frame(test_error_df)
-test_error_df
-
-resamp <- resamples(list(KNN = knn.fit,
-                         LN = lm.fit,
-                         RIDGE = ridge.fit,
-                         LASSO = lasso.fit,
-                         ENET = enet.fit,
-                         PCR = pcr.fit,
-                         PLS = pls.fit,
-                         GAM = gam.fit,
-                         MARS = mars.fit))
-summary(resamp)
-
-bwplot(resamp, metric = "RMSE")
-```
-**MARS is the best fitting model since it has the smallest RMSE.**
-
-```{r}
-summary(mars.fit$finalModel)
-
-vip(mars.fit$finalModel)
-
-p1 <- pdp::partial(mars.fit, pred.var = c("Adult.Mortality"), grid.resolution = 10) %>%
-  autoplot()
-p2 <- pdp::partial(mars.fit, pred.var = c("BMI"), grid.resolution = 10) %>%
-  autoplot()
-p3 <- pdp::partial(mars.fit, pred.var = c("Diphtheria"), grid.resolution = 10) %>%
-  autoplot()
-p4 <- pdp::partial(mars.fit, pred.var = c("Income.composition.of.resources"), grid.resolution = 10) %>%
-  autoplot()
-p5 <- pdp::partial(mars.fit, pred.var = c("infant.deaths"), grid.resolution = 10) %>%
-  autoplot()
-p6 <- pdp::partial(mars.fit, pred.var = c("HIV.AIDS"), grid.resolution = 10) %>%
-  autoplot()
-p7 <- pdp::partial(mars.fit, pred.var = c("thinness.5.9.years"), grid.resolution = 10) %>%
-  autoplot()
-
-grid.arrange(p1, p2, p3, p4, p5, p6, p7, ncol = 3)
-
-```
-
-## Random forest
-```{r}
-rf.grid <- expand.grid(mtry = 1:6,
-                       splitrule = "variance",
-                       min.node.size = 1:6)
 set.seed(2022)
-rf.fit <- train(Life.expectancy~., train, 
+rpart.fit <- train(diagnosis ~ . , 
+                   train, 
+                   method = "rpart",
+                   tuneGrid = data.frame(cp = exp(seq(-6,-3, len = 50))),
+                   trControl = ctrl,
+                   metric = "ROC")
+ggplot(rpart.fit, highlight = TRUE)
+rpart.plot(rpart.fit$finalModel)
+```
+
+### CIT
+
+```{r}
+set.seed(2022)
+ctree.fit <- train(diagnosis ~ . , 
+                   train, 
+                   method = "ctree",
+                   tuneGrid = data.frame(mincriterion = 1-exp(seq(-2, -1, length = 50))),
+                   metric = "ROC",
+                   trControl = ctrl)
+ggplot(ctree.fit, highlight = TRUE)
+```
+
+```{r, fig.width=15, fig.height=6}
+plot(ctree.fit$finalModel)
+summary(resamples(list(rpart.fit, ctree.fit)))
+```
+
+### Random forests
+
+```{r}
+rf.grid <- expand.grid(mtry = 1:8,
+                       splitrule = "gini",
+                       min.node.size = seq(from = 2, to = 10, by = 2))
+set.seed(2022)
+rf.fit <- train(diagnosis ~ . , 
+                train, 
                 method = "ranger",
                 tuneGrid = rf.grid,
+                metric = "ROC",
                 trControl = ctrl)
 
-#test error
-rf.pred <- predict(rf.fit, newdata = test[,1:18])
-rf_te <- mean((y2 - rf.pred)^2)
-rf_te
+ggplot(rf.fit, highlight = TRUE)
+
+rf.pred <- predict(rf.fit, newdata = dat[-rowTrain,], type = "prob")[,1]
 ```
+
+### AdaBoost
+
+```{r}
+gbmA.grid <- expand.grid(n.trees = c(2000,3000,4000,5000),
+                         interaction.depth = 1:6,
+                         shrinkage = c(0.0005,0.001,0.002),
+                         n.minobsinnode = 1)
+set.seed(2022)
+gbmA.fit <- train(diagnosis ~ . , 
+                  train, 
+                  tuneGrid = gbmA.grid,
+                  trControl = ctrl,
+                  method = "gbm",
+                  distribution = "adaboost",
+                  metric = "ROC",
+                  verbose = FALSE)
+
+ggplot(gbmA.fit, highlight = TRUE)
+
+gbmA.pred <- predict(gbmA.fit, newdata = dat[-rowTrain,], type = "prob")[,1]
+```
+
+
+```{r}
+resamp <- resamples(list(rf = rf.fit, 
+                         gbmA = gbmA.fit))
+summary(resamp)
+```
+
+## linear
+```{r}
+# kernlab
+set.seed(2022)
+svml.fit <- train(diabetes ~ . , 
+                  data = dat[rowTrain,], 
+                  method = "svmLinear",
+                  # preProcess = c("center", "scale"),
+                  tuneGrid = data.frame(C = exp(seq(-5,2,len=50))),
+                  trControl = ctrl)
+
+plot(svml.fit, highlight = TRUE, xTrans = log)
+
+# e1071
+set.seed(2022)
+svml.fit2 <- train(diabetes ~ . , 
+                  data = dat[rowTrain,], 
+                  method = "svmLinear2",
+                  tuneGrid = data.frame(cost = exp(seq(-5,2,len=50))),
+                  trControl = ctrl)
+
+plot(svml.fit2, highlight = TRUE, xTrans = log)
+```
+
+## radial
+```{r, fig.width=15, fig.height=8}
+svmr.grid <- expand.grid(C = exp(seq(-1,4,len=20)),
+                         sigma = exp(seq(-6,-2,len=20)))
+
+# tunes over both cost and sigma
+set.seed(1)             
+svmr.fit <- train(diabetes ~ . , dat, 
+                  subset = rowTrain,
+                  method = "svmRadialSigma",
+                  tuneGrid = svmr.grid,
+                  trControl = ctrl)
+
+myCol<- rainbow(20)
+myPar <- list(superpose.symbol = list(col = myCol),
+              superpose.line = list(col = myCol))
+
+plot(svmr.fit, highlight = TRUE, par.settings = myPar)
+
+# tune over cost and uses a single value of sigma based on kernlab's sigest function
+set.seed(1)             
+svmr.fit2 <- train(diabetes ~ . , dat, 
+                   subset = rowTrain,
+                   method = "svmRadialCost",
+                   tuneGrid = data.frame(C = exp(seq(-3,3,len=20))),
+                   trControl = ctrl)
+
+# Platt¡¯s probabilistic outputs; use with caution
+set.seed(1)             
+svmr.fit3 <- train(diabetes ~ . , dat, 
+                   subset = rowTrain,
+                   method = "svmRadialCost",
+                   tuneGrid = data.frame(C = exp(seq(-3,3,len=20))),
+                   trControl = ctrl,
+                   prob.model = TRUE) 
+# predict(svmr.fit3, newdata = x_test, type = "prob")
+
+set.seed(1)             
+rpart.fit <- train(diabetes ~ . , dat, 
+                   subset = rowTrain,
+                   method = "rpart",
+                   tuneLength = 50,
+                   trControl = ctrl)
+```
+
 
 ### Variable importance
 ```{r}
@@ -422,20 +473,24 @@ plot_explanations(explanation.obs)
 
 # K means clustering
 ```{r}
-dat <- scale(expect_df[,-1])
+dat <- rbind(train,test)
+
+train_scl <- scale(train[,-1])
+test_scl <- scale(test[,-1])
+dat_scl <- rbind(train_scl,test_scl)
 ```
 
 
 ```{r, fig.height=3.5}
-fviz_nbclust(dat,
+fviz_nbclust(dat_scl,
              FUNcluster = kmeans,
              method = "silhouette")
 
-km <- kmeans(dat, centers = 2, nstart = 20)
+km <- kmeans(dat_scl, centers = 2, nstart = 20)
 ```
 
 ```{r}
-km_vis <- fviz_cluster(list(data = dat, cluster = km$cluster), 
+km_vis <- fviz_cluster(list(data = dat_scl, cluster = km$cluster), 
                        ellipse.type = "convex", 
                        geom = c("point","text"),
                        labelsize = 5, 
@@ -446,7 +501,7 @@ km_vis
 
 # Hierarchical clustering
 ```{r}
-hc.complete <- hclust(dist(dat), method = "complete")
+hc.complete <- hclust(dist(dat_scl), method = "complete")
 ```
 
 ```{r, fig.width=7}
