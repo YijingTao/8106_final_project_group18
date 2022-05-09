@@ -48,65 +48,60 @@ library(jpeg)
 
 ## import data set (70% to train data while 30% to test data)
 ```{r}
-#input the document
-expect_df_nores = read_csv("./Life Expectancy Data.csv") %>% 
+dat_df_nores = read_csv("./data.csv")%>% 
   data.frame() %>% 
-  na.omit() %>% 
-  select(-Country, -Alcohol, -Year, -Life.expectancy)
-expect_df_res = read_csv("./Life Expectancy Data.csv") %>% 
+  dplyr::select(-diagnosis,-id)
+dat_df_res = read_csv("./data.csv") %>% 
   data.frame() %>% 
-  na.omit() %>% 
-  select(Life.expectancy)
-expect_df = cbind(expect_df_nores, expect_df_res) %>% 
-  data.frame() %>% 
-  relocate(Status)
+  dplyr::select(diagnosis)
+dat_df = cbind(dat_df_nores, dat_df_res) %>% 
+  data.frame() 
 
-#get a subset of 496 rows
-set.seed(2022)
-subsetRows <- createDataPartition(expect_df$Life.expectancy, p = .3, list = F)
-expect_df <- expect_df[subsetRows,]
-expect_df2 <- model.matrix(Life.expectancy ~ ., expect_df)[ ,-1]
-
+dat_df2 <- model.matrix(diagnosis ~ ., dat_df)[ ,-1]
 #assign 70% to the training set and the rest 30% to the test set 
 set.seed(2022)
-trainRows <- createDataPartition(expect_df$Life.expectancy, p = .7, list = F)
+trainRows <- createDataPartition(dat_df$diagnosis, p = .7, list = F)
 
-train <- expect_df[trainRows,]
-x1 <- expect_df2[trainRows,]
-y1 <- expect_df$Life.expectancy[trainRows]
+train <- dat_df[trainRows,]
+x1 <- dat_df2[trainRows,]
+y1 <- dat_df$diagnosis[trainRows]
 
 # matrix of predictors (glmnet uses input matrix)
-test <- expect_df[-trainRows,]
-x2 <- expect_df2[-trainRows,]
-y2 <- expect_df$Life.expectancy[-trainRows]
+test <- dat_df[-trainRows,]
+x2 <- dat_df2[-trainRows,]
+y2 <- dat_df$diagnosis[-trainRows]
 
 ctrl <- trainControl(method = "cv", number = 10)
 ```
 
 ## visualization
 ```{r}
-dfSummary(expect_df[,-1])
+dfSummary(dat_df[,-1])
 ```
 
 ```{r, fig.height = 4}
-theme1 <- trellis.par.get()
-theme1$plot.symbol$col <- rgb(.2, .4, .2, .5)
-theme1$plot.symbol$pch <- 16
-theme1$plot.line$col <- rgb(.8, .1, .1, 1)
-theme1$plot.line$lwd <- 2
-theme1$strip.background$col <- rgb(.0, .2, .6, .2)
-trellis.par.set(theme1)
+train_M <- train %>% 
+  filter(diagnosis == "M")
+train_B <- train %>% 
+  filter(diagnosis == "B")
 
-featurePlot(x = train[ ,2:18], 
-            y = y1, 
-            plot = "scatter", 
-            span = .5, 
-            #scale = TRUE,
-            labels = c("Predictors","Y"),
-            type = c("p", "smooth"))
-
-ggplot(train, aes(x = Life.expectancy)) + 
-  geom_density(aes(color = Status))
+mfrow=c(2,30)
+boxplot(train_M[,1])
+boxplot(train_B[,1])
+boxplot(train_M[,2])
+boxplot(train_B[,2])
+boxplot(train_M[,3])
+boxplot(train_B[,3])
+boxplot(train_M[,4])
+boxplot(train_B[,4])
+boxplot(train_M[,5])
+boxplot(train_B[,5])
+boxplot(train_M[,6])
+boxplot(train_B[,6])
+boxplot(train_M[,1])
+boxplot(train_B[,1])
+boxplot(train_M[,1])
+boxplot(train_B[,1])
 ```
 
 ## KNN model
