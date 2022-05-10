@@ -636,29 +636,16 @@ ice2.rf <- rf.fit %>%
 grid.arrange(ice1.rf, ice2.rf, nrow = 1)
 ```
 
-### lime ????
-```{r, warning=FALSE, fig.height = 10}
-explainer.rf <- lime(train[,1:18], rf.fit)
-
-new_obs <- test[,1:18][1:10,]
-explanation.obs <- explain(new_obs,
-                           explainer.rf, 
-                           n_features = 10)
-
-plot_features(explanation.obs)
-plot_explanations(explanation.obs)
-```
-
-
 # K means clustering
 ```{r}
-dat <- rbind(train,test)
+dat <- dat_df
+dat$diagnosis[which(dat$diagnosis == 'M')] <- '0'
+dat$diagnosis[which(dat$diagnosis == 'B')] <- '1'
 
 train_scl <- scale(train[,1:30])
 test_scl <- scale(test[,1:30])
 dat_scl <- rbind(train_scl,test_scl)
 ```
-
 
 ```{r, fig.height=3.5}
 fviz_nbclust(dat_scl,
@@ -764,16 +751,16 @@ length(clu_cen_4)
 To display more details, we show the heatmap of the data.
 
 ```{r, fig.width = 12, fig.height=7}
-#display.brewer.all(n=NULL, type="all", select=NULL, exact.n=TRUE)
-#col1 <- colorRampPalette(brewer.pal(9, "GnBu"))(100)
-#col2 <- colorRampPalette(brewer.pal(3, "Spectral"))(2)
-#
-#heatmap.2(t(dat), 
-#          col = col1, keysize=.8, key.par = list(cex=.5),
-#          trace = "none", key = TRUE, cexCol = 0.75, 
-#          labCol = as.character(dat[,1]),
-#          ColSideColors = col2[as.numeric(dat[,"Legendary"])+1],
-#          margins = c(10, 10))
+display.brewer.all(n=NULL, type="all", select=NULL, exact.n=TRUE)
+col1 <- colorRampPalette(brewer.pal(9, "GnBu"))(100)
+col2 <- colorRampPalette(brewer.pal(3, "Spectral"))(2)
+
+heatmap.2(t(dat), 
+          col = col1, keysize=.8, key.par = list(cex=.5),
+          trace = "none", key = TRUE, cexCol = 0.75, 
+          labCol = as.character(dat[,1]),
+          ColSideColors = col2[as.numeric(dat[,"diagnosis"])+1],
+          margins = c(10, 10))
 ```
 
 # PCA
