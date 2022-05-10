@@ -161,6 +161,35 @@ partimat(diagnosis ~ .,
          data = train_fractal_dimension, method = "lda")
 ```
 
+## KNN model
+```{r}
+kGrid <- expand.grid(k = seq(from = 1, to = 20, by = 1))
+set.seed(2022)
+knn.fit <- train(diagnosis ~., 
+                data = train, 
+                method = "knn",
+                metric = "ROC",
+                trControl = ctrl,
+                tuneGrid = kGrid)
+```
+
+```{r eval=FALSE, include=FALSE}
+save(knn.fit, file = "./result/model.knn.RData")
+
+load("./result/model.knn.RData")
+```
+
+```{r}
+ggplot(knn.fit)
+knn.fit$bestTune
+
+test.pred.prob.knn <- predict(knn.fit, newdata = test)
+knn_matrix <- confusionMatrix(data = test.pred.prob.knn,
+                reference = test$diagnosis,
+                positive = "pos")
+knn_matrix 
+```
+
 ## glm model
 ```{r}
 contrasts(train$diagnosis)
@@ -275,8 +304,6 @@ load("./result/model.mars.RData")
 plot(model.mars)
 
 coef(model.mars$finalModel) 
-
-pdp::partial(model.mars, pred.var = c("age"), grid.resolution = 200) %>% autoplot()
 
 vip(model.mars$finalModel)
 
