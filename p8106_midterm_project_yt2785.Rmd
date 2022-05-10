@@ -47,17 +47,23 @@ library(jpeg)
 library(klaR)
 library(pROC)
 library(rpart)
+library(patchwork)
 ```
 
 ## import data set (70% to train data while 30% to test data)
 ```{r}
-dat_df_nores = read_csv("./data.csv")%>% 
-  na.omit() %>% 
-  dplyr::select(-diagnosis,-id)
+dat_df_nores = read_csv("./data.csv") %>% 
+  dplyr::select(-diagnosis)
 dat_df_res = read_csv("./data.csv") %>% 
-  na.omit() %>% 
   dplyr::select(diagnosis)
-dat_df = cbind(dat_df_nores, dat_df_res) 
+dat_df_wait = cbind(dat_df_nores, dat_df_res) 
+dat_df <- dat_df_wait[,2:32]
+rownames(dat_df) = dat_df_wait[,1]
+
+#dat <- read.csv("Pokemon.csv")
+#dat1 <- dat[,2:7]
+#dat1 <- scale(dat1)
+#rownames(dat1) <- dat[,1]
 
 dat_df2 <- model.matrix(diagnosis ~ ., dat_df)[ ,-1]
 #assign 70% to the training set and the rest 30% to the test set 
@@ -648,8 +654,8 @@ plot_explanations(explanation.obs)
 ```{r}
 dat <- rbind(train,test)
 
-train_scl <- scale(train[,-1])
-test_scl <- scale(test[,-1])
+train_scl <- scale(train[,1:30])
+test_scl <- scale(test[,1:30])
 dat_scl <- rbind(train_scl,test_scl)
 ```
 
@@ -675,20 +681,84 @@ km_vis
 # Hierarchical clustering
 ```{r}
 hc.complete <- hclust(dist(dat_scl), method = "complete")
+hc.average <- hclust(dist(dat_scl), method = "average")
+hc.single <- hclust(dist(dat_scl), method = "single")
+hc.centroid <- hclust(dist(dat_scl), method = "centroid")
 ```
 
+The function `fviz_dend()` can be applied to visualize the dendrogram.
+
 ```{r, fig.width=7}
-fviz_dend(hc.complete, k = 4,        
+clu_com <- fviz_dend(hc.complete, k = 4,        
           cex = 0.3, 
           palette = "jco", 
           color_labels_by_k = TRUE,
           rect = TRUE, rect_fill = TRUE, rect_border = "jco",
           labels_track_height = 2.5)
 
-ind4.complete <- cutree(hc.complete, 4)
+clu_aver <- fviz_dend(hc.average, k = 4,        
+          cex = 0.3, 
+          palette = "jco", 
+          color_labels_by_k = TRUE,
+          rect = TRUE, rect_fill = TRUE, rect_border = "jco",
+          labels_track_height = 2.5)
 
-# Who are in the fourth cluster?
-dat[ind4.complete == 4,]
+clu_single <- fviz_dend(hc.single, k = 4,        
+          cex = 0.3, 
+          palette = "jco", 
+          color_labels_by_k = TRUE,
+          rect = TRUE, rect_fill = TRUE, rect_border = "jco",
+          labels_track_height = 2.5)
+
+clu_cen <- fviz_dend(hc.centroid, k = 4,        
+          cex = 0.3, 
+          palette = "jco", 
+          color_labels_by_k = TRUE,
+          rect = TRUE, rect_fill = TRUE, rect_border = "jco",
+          labels_track_height = 2.5)
+
+clu_com+clu_aver+clu_single+clu_cen
+
+ind4.complete <- cutree(hc.complete, 4)
+ind4.aver <- cutree(hc.average, 4)
+ind4.single <- cutree(hc.single, 4)
+ind4.cen <- cutree(hc.centroid, 4)
+
+clu_com_1 <- rownames(dat_scl[ind4.complete == 1,])
+clu_com_2 <- rownames(dat_scl[ind4.complete == 2,])
+clu_com_3 <- rownames(dat_scl[ind4.complete == 3,])
+clu_com_4 <- rownames(dat_scl[ind4.complete == 4,])
+length(clu_com_1)
+length(clu_com_2)
+length(clu_com_3)
+length(clu_com_4)
+
+clu_aver_1 <- rownames(dat_scl[ind4.aver == 1,])
+clu_aver_2 <- rownames(dat_scl[ind4.aver == 2,])
+clu_aver_3 <- rownames(dat_scl[ind4.aver == 3,])
+clu_aver_4 <- rownames(dat_scl[ind4.aver == 4,])
+length(clu_aver_1)
+length(clu_aver_2)
+length(clu_aver_3)
+length(clu_aver_4)
+
+clu_single_1 <- rownames(dat_scl[ind4.single == 1,])
+clu_single_2 <- rownames(dat_scl[ind4.single == 2,])
+clu_single_3 <- rownames(dat_scl[ind4.single == 3,])
+clu_single_4 <- rownames(dat_scl[ind4.single == 4,])
+length(clu_single_1)
+length(clu_single_2)
+length(clu_single_3)
+length(clu_single_4)
+
+clu_cen_1 <- rownames(dat_scl[ind4.cen == 1,])
+clu_cen_2 <- rownames(dat_scl[ind4.cen == 2,])
+clu_cen_3 <- rownames(dat_scl[ind4.cen == 3,])
+clu_cen_4 <- rownames(dat_scl[ind4.cen == 4,])
+length(clu_cen_1)
+length(clu_cen_2)
+length(clu_cen_3)
+length(clu_cen_4)
 ```
 
 To display more details, we show the heatmap of the data.
@@ -705,3 +775,45 @@ To display more details, we show the heatmap of the data.
 #          ColSideColors = col2[as.numeric(dat[,"Legendary"])+1],
 #          margins = c(10, 10))
 ```
+
+# PCA
+
+The function `prcomp()` can be used to perform PCA.
+
+```{r, fig.height=3}
+mean <- dat[1:10]
+diag <- dat[,31]
+mean_scl <- scale(mean)
+
+pca <- prcomp(dat_scl)
+pca$rotation
+pca$sdev
+pca$rotation %*% diag(pca$sdev)
+corrplot(pca$rotation %*% diag(pca$sdev))
+
+var <- get_pca_var(pca)
+corrplot(var$cor)
+```
+
+The function `fviz_eig()` plots the eigenvalues/variances against the number of dimensions. 
+
+```{r, fig.height=4}
+fviz_eig(pca, addlabels = TRUE)
+```
+
+
+The function `fviz_pca_biplot()` can be used to obtain the biplot of individuals and variables.
+
+```{r, fig.height=4}
+fviz_pca_biplot(pca, axes = c(1,2),
+                habillage = ifelse(dat$Legendary==TRUE, "Legendary","Not legendary"),
+                label = c("var"),
+                addEllipses = TRUE) 
+
+fviz_pca_var(pca, col.var = "steelblue", repel = TRUE)
+fviz_pca_ind(pca,
+             habillage = ifelse(dat$Legendary==TRUE,"Legendary","Not legendary"),
+             label = "none",
+             addEllipses = TRUE)
+```
+
