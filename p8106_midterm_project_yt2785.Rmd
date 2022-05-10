@@ -165,17 +165,20 @@ model.glm <- train(x = train[,1:30],
                    metric = "ROC",
                    trControl = ctrl)
 
-test.pred.prob.glm <- predict(model.glm, newdata = test)
-glm_matrix <- confusionMatrix(data = test.pred.prob.glm,
-                reference = test$diagnosis,
-                positive = "pos")
-glm_matrix 
 ```
 
 ```{r eval=FALSE, include=FALSE}
 save(model.glm, file = "./result/model.glm.RData")
 
 load("./result/model.glm.RData")
+```
+
+```{r}
+test.pred.prob.glm <- predict(model.glm, newdata = test)
+glm_matrix <- confusionMatrix(data = test.pred.prob.glm,
+                reference = test$diagnosis,
+                positive = "pos")
+glm_matrix 
 ```
 
 ## Penalized logistic regression
@@ -189,7 +192,15 @@ model.glmn <- train(x = train[,1:30],
                     tuneGrid = glmnGrid,
                     metric = "ROC",
                     trControl = ctrl)
+```
 
+```{r eval=FALSE, include=FALSE}
+save(model.glmn, file = "./result/model.glmn.RData")
+
+load("./result/model.glmn.RData")
+```
+
+```{r}
 model.glmn$bestTune
 log(model.glmn$bestTune$lambda)
 
@@ -206,11 +217,6 @@ glmn_matrix <- confusionMatrix(data = test.pred.prob.glmn,
 glmn_matrix 
 ```
 
-```{r eval=FALSE, include=FALSE}
-save(model.glmn, file = "./result/model.glmn.RData")
-
-load("./result/model.glmn.RData")
-```
 ## GAM
 
 ```{r}
@@ -220,8 +226,15 @@ model.gam <- train(x = train[,1:30],
                    method = "gam",
                    metric = "ROC",
                    trControl = ctrl)
+```
 
+```{r eval=FALSE, include=FALSE}
+save(model.gam, file = "./result/model.gam.RData")
 
+load("./result/model.gam.RData")
+```
+
+```{r}
 model.gam$finalModel
 log(model.gam$finalModele$lambda)
 plot(model.gam$finalModel, select = 3)
@@ -233,11 +246,6 @@ gam_matrix <- confusionMatrix(data = test.pred.prob.gam,
 gam_matrix 
 ```
 
-```{r eval=FALSE, include=FALSE}
-save(model.gam, file = "./result/model.gam.RData")
-
-load("./result/model.gam.RData")
-```
 ## MARS
 
 ```{r}
@@ -249,7 +257,15 @@ model.mars <- train(x = train[,1:30],
                                            nprune = 2:20),
                     metric = "ROC",
                     trControl = ctrl)
+```
 
+```{r eval=FALSE, include=FALSE}
+save(model.mars, file = "./result/model.mars.RData")
+
+load("./result/model.mars.RData")
+```
+
+```{r}
 plot(model.mars)
 
 coef(model.mars$finalModel) 
@@ -265,12 +281,6 @@ mars_matrix <- confusionMatrix(data = test.pred.prob.mars,
 mars_matrix 
 ```
 
-```{r eval=FALSE, include=FALSE}
-save(model.mars, file = "./result/model.mars.RData")
-
-load("./result/model.mars.RData")
-```
-
 ## LDA
 ```{r}
 set.seed(2022)
@@ -279,12 +289,6 @@ model.lda <- train(x = train[,1:30],
                    method = "lda",
                    metric = "ROC",
                    trControl = ctrl)
-
-test.pred.prob.lda <- predict(model.lda, newdata = test)
-lda_matrix <- confusionMatrix(data = test.pred.prob.lda,
-                reference = test$diagnosis,
-                positive = "pos")
-lda_matrix 
 ```
 
 ```{r eval=FALSE, include=FALSE}
@@ -292,8 +296,16 @@ save(model.lda, file = "./result/model.lda.RData")
 
 load("./result/model.lda.RData")
 ```
-## QDA
 
+```{r}
+test.pred.prob.lda <- predict(model.lda, newdata = test)
+lda_matrix <- confusionMatrix(data = test.pred.prob.lda,
+                reference = test$diagnosis,
+                positive = "pos")
+lda_matrix
+```
+
+## QDA
 ```{r}
 set.seed(2022)
 model.qda <- train(x = train[,1:30],
@@ -301,18 +313,20 @@ model.qda <- train(x = train[,1:30],
                    method = "qda",
                    metric = "ROC",
                    trControl = ctrl)
-
-test.pred.prob.qda <- predict(model.qda, newdata = test)
-qda_matrix <- confusionMatrix(data = test.pred.prob.qda,
-                reference = test$diagnosis,
-                positive = "pos")
-qda_matrix 
 ```
 
 ```{r eval=FALSE, include=FALSE}
 save(model.qda, file = "./result/model.qda.RData")
 
 load("./result/model.qda.RData")
+```
+
+```{r}
+test.pred.prob.qda <- predict(model.qda, newdata = test)
+qda_matrix <- confusionMatrix(data = test.pred.prob.qda,
+                reference = test$diagnosis,
+                positive = "pos")
+qda_matrix 
 ```
 
 ## Naive Bayes (NB)
@@ -328,14 +342,21 @@ model.nb <- train(x = train[,1:30],
                   tuneGrid = nbGrid,
                   metric = "ROC",
                   trControl = ctrl)
-
-plot(model.nb)
 ```
 
 ```{r eval=FALSE, include=FALSE}
 save(model.nb, file = "./result/model.nb.RData")
 
 load("./result/model.nb.RData")
+```
+
+```{r}
+plot(model.nb)
+test.pred.prob.nb <- predict(model.nb, newdata = test)
+nb_matrix <- confusionMatrix(data = test.pred.prob.nb,
+                reference = test$diagnosis,
+                positive = "pos")
+nb_matrix 
 ```
 
 ## tree
@@ -347,8 +368,6 @@ rpart.fit <- train(diagnosis ~ . ,
                    tuneGrid = data.frame(cp = exp(seq(-6,-3, len = 50))),
                    trControl = ctrl,
                    metric = "ROC")
-ggplot(rpart.fit, highlight = TRUE)
-rpart.plot(rpart.fit$finalModel)
 ```
 
 ```{r eval=FALSE, include=FALSE}
@@ -356,6 +375,18 @@ save(rpart.fit, file = "./result/model.rpart.RData")
 
 load("./result/model.rpart.RData")
 ```
+
+```{r}
+ggplot(rpart.fit, highlight = TRUE)
+rpart.plot(rpart.fit$finalModel)
+
+test.pred.prob.rpart <- predict(model.rpart, newdata = test)
+rpart_matrix <- confusionMatrix(data = test.pred.prob.rpart,
+                reference = test$diagnosis,
+                positive = "pos")
+rpart_matrix
+```
+
 ### CIT
 
 ```{r}
@@ -366,7 +397,6 @@ ctree.fit <- train(diagnosis ~ . ,
                    tuneGrid = data.frame(mincriterion = 1-exp(seq(-2, -1, length = 50))),
                    metric = "ROC",
                    trControl = ctrl)
-ggplot(ctree.fit, highlight = TRUE)
 ```
 
 ```{r eval=FALSE, include=FALSE}
@@ -376,8 +406,14 @@ load("./result/model.ctree.RData")
 ```
 
 ```{r, fig.width=15, fig.height=6}
+ggplot(ctree.fit, highlight = TRUE)
 plot(ctree.fit$finalModel)
-summary(resamples(list(rpart.fit, ctree.fit)))
+
+test.pred.prob.ctree <- predict(model.ctree, newdata = test)
+ctree_matrix <- confusionMatrix(data = test.pred.prob.ctree,
+                reference = test$diagnosis,
+                positive = "pos")
+ctree_matrix
 ```
 
 ### Random forests
@@ -393,10 +429,6 @@ rf.fit <- train(diagnosis ~ . ,
                 tuneGrid = rf.grid,
                 metric = "ROC",
                 trControl = ctrl)
-
-ggplot(rf.fit, highlight = TRUE)
-
-rf.pred <- predict(rf.fit, newdata = test, type = "prob")[,1]
 ```
 
 ```{r eval=FALSE, include=FALSE}
@@ -404,6 +436,19 @@ save(rf.fit, file = "./result/model.rf.RData")
 
 load("./result/model.rf.RData")
 ```
+
+```{r}
+ggplot(rf.fit, highlight = TRUE)
+
+rf.pred <- predict(rf.fit, newdata = test, type = "prob")[,1]
+
+test.pred.prob.rf <- predict(model.rf, newdata = test)
+rf_matrix <- confusionMatrix(data = test.pred.prob.rf,
+                reference = test$diagnosis,
+                positive = "pos")
+rf_matrix
+```
+
 ### AdaBoost
 
 ```{r}
@@ -420,10 +465,6 @@ gbmA.fit <- train(diagnosis ~ . ,
                   distribution = "adaboost",
                   metric = "ROC",
                   verbose = FALSE)
-
-ggplot(gbmA.fit, highlight = TRUE)
-
-gbmA.pred <- predict(gbmA.fit, newdata = dat[-rowTrain,], type = "prob")[,1]
 ```
 
 
@@ -434,9 +475,14 @@ load("./result/model.gbmA.RData")
 ```
 
 ```{r}
-resamp <- resamples(list(rf = rf.fit, 
-                         gbmA = gbmA.fit))
-summary(resamp)
+ggplot(gbmA.fit, highlight = TRUE)
+gbmA.pred <- predict(gbmA.fit, newdata = test, type = "prob")[,1]
+
+test.pred.prob.gbmA <- predict(model.gbmA, newdata = test)
+gbmA_matrix <- confusionMatrix(data = test.pred.prob.gbmA,
+                reference = test$diagnosis,
+                positive = "pos")
+gbmA_matrix
 ```
 
 ## linear
@@ -452,15 +498,18 @@ svml.fit <- train(diagnosis ~ . ,
 
 plot(svml.fit, highlight = TRUE, xTrans = log)
 
+log(svml.fit$bestTune)
+
 # e1071
 set.seed(2022)
-svml.fit2 <- train(diabetes ~ . , 
-                  data = dat[rowTrain,], 
+svml.fit2 <- train(diagnosis ~ . , 
+                  data = train, 
                   method = "svmLinear2",
                   tuneGrid = data.frame(cost = exp(seq(-5,2,len=50))),
                   trControl = ctrl)
 
 plot(svml.fit2, highlight = TRUE, xTrans = log)
+log(svml.fit2$bestTune)
 ```
 
 ```{r eval=FALSE, include=FALSE}
@@ -514,6 +563,23 @@ svmr.fit3 <- train(diagnosis ~ . ,
 
 ```
 
+```{r eval=FALSE, include=FALSE}
+save(svmr.fit, file = "./result/model.svmr.RData")
+
+load("./result/model.svmr.RData")
+```
+
+```{r eval=FALSE, include=FALSE}
+save(svmr.fit2, file = "./result/model.svmr2.RData")
+
+load("./result/model.svmr2.RData")
+```
+
+```{r eval=FALSE, include=FALSE}
+save(svmr.fit3, file = "./result/model.svmr3.RData")
+
+load("./result/model.svmr3.RData")
+```
 
 ### Variable importance
 ```{r}
