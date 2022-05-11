@@ -92,68 +92,32 @@ ctrl <- trainControl(method = "repeatedcv",
 dfSummary(dat_df[,-1])
 ```
 
-```{r, fig.height = 4}
-train_radius <- train %>% 
-  dplyr::select(radius_mean,
-                radius_se,
-                radius_worst,diagnosis)
-train_texture <- train %>% 
-  dplyr::select(texture_mean,
-                texture_se,
-                texture_worst,diagnosis)
-train_perimeter <- train %>% 
-  dplyr::select(perimeter_mean,
-                perimeter_se,
-                perimeter_worst,diagnosis)
-train_area <- train %>% 
-  dplyr::select(area_mean,
-                area_se,
-                area_worst,diagnosis)
-train_smoothness <- train %>% 
-  dplyr::select(smoothness_mean,
-                smoothness_se,
-                smoothness_worst,diagnosis)
-train_compactness <- train %>% 
-  dplyr::select(compactness_mean,
-                compactness_se,
-                compactness_worst,diagnosis)
-train_concavity <- train %>% 
-  dplyr::select(concavity_mean,
-                concavity_se,
-                concavity_worst,diagnosis)
-train_concave_points <- train %>% 
-  dplyr::select(concave_points_mean,
-                concave_points_se,
-                concave_points_worst,diagnosis)
-train_symmetry <- train %>% 
-  dplyr::select(symmetry_mean,
-                symmetry_se,
-                symmetry_worst,diagnosis)
-train_fractal_dimension <- train %>% 
-  dplyr::select(fractal_dimension_mean,
-                fractal_dimension_se,
-                fractal_dimension_worst,diagnosis)
+### feature plot
+```{r}
+data = read_csv("./data.csv") %>%
+  mutate(diagnosis = as.factor(diagnosis))
+summary(data)
+featurePlot(x = data[, 3:12], 
+            y = data$diagnosis,
+            scales = list(x = list(relation = "free"), 
+                          y = list(relation = "free")),
+            plot = "density", pch = "|", 
+            auto.key = list(columns = 2))
 
-partimat(diagnosis ~ ., 
-         data = train_radius, method = "lda")
-partimat(diagnosis ~ ., 
-         data = train_texture, method = "lda")
-partimat(diagnosis ~ ., 
-         data = train_perimeter, method = "lda")
-partimat(diagnosis ~ ., 
-         data = train_area, method = "lda")
-partimat(diagnosis ~ ., 
-         data = train_smoothness, method = "lda")
-partimat(diagnosis ~ ., 
-         data = train_compactness, method = "lda")
-partimat(diagnosis ~ ., 
-         data = train_concavity, method = "lda")
-partimat(diagnosis ~ ., 
-         data = train_concave_points, method = "lda")
-partimat(diagnosis ~ ., 
-         data = train_symmetry, method = "lda")
-partimat(diagnosis ~ ., 
-         data = train_fractal_dimension, method = "lda")
+featurePlot(x = data[, 13:22], 
+            y = data$diagnosis,
+            scales = list(x = list(relation = "free"), 
+                          y = list(relation = "free")),
+            plot = "density", pch = "|", 
+            auto.key = list(columns = 2))
+
+featurePlot(x = data[, 23:32], 
+            y = data$diagnosis,
+            scales = list(x = list(relation = "free"), 
+                          y = list(relation = "free")),
+            plot = "density", pch = "|", 
+            auto.key = list(columns = 2))
+
 ```
 
 ## KNN model
@@ -259,6 +223,9 @@ myPar <- list(superpose.symbol = list(col = myCol),
 
 plot(model.glmn, par.settings = myPar, xTrans = function(x) log(x))
 
+vip(model.glmn$finalModel)
+summary(model.glmn$finalModel)
+plot(model.glmn$finalModel)
 train.pred.prob.glmn <- predict(model.glmn, newdata = train)
 glmn_matrix_train <- confusionMatrix(data = train.pred.prob.glmn,
                 reference = train$diagnosis,
@@ -334,6 +301,7 @@ load("./result/model.mars.RData")
 
 ```{r}
 model.mars$bestTune
+plot(model.mars$finalModel)
 train.pred.prob.mars <- predict(model.mars, newdata = train)
 mars_matrix_train <- confusionMatrix(data = train.pred.prob.mars,
                 reference = train$diagnosis,
@@ -771,6 +739,10 @@ svmr.fit$bestTune
 log(svmr.fit$bestTune)
 
 ggplot(svmr.fit, highlight = TRUE)
+plot(svmr.fit$finalModel)
+
+summary(svmr.fit)
+summary(svmr.fit$finalModel)
 
 train.pred.prob.svmr <- predict(svmr.fit, newdata = train)
 svmr_matrix_train <- confusionMatrix(data = train.pred.prob.svmr,
@@ -874,6 +846,20 @@ km_vis <- fviz_cluster(list(data = dat_scl, cluster = km$cluster),
                        palette = "Dark2") + labs(title = "K-means") 
 
 km_vis
+```
+
+```{r}
+k_cluster_res = as.data.frame(km$cluster) %>%
+  mutate(cluster = km$cluster) %>%
+  mutate(cluster_2 = cluster - 1)
+
+class_1 = k_cluster_res %>% filter(cluster_2 == 0)
+class_2 = k_cluster_res %>% filter(cluster_2 == 1)
+
+
+confusionMatrix(data = as.factor(k_cluster_res$cluster_2),
+                reference = as.factor(dat$diagnosis),
+                positive = "0")
 ```
 
 ```{r}
@@ -988,5 +974,39 @@ fviz_pca_ind(pca_w,
              habillage = ifelse(dat$diagnosis == "1", "M","B"),
              label = "none",
              addEllipses = TRUE)
+```
+
+## model comparing 
+
+```{r}
+res = resamples(list(gbmA = gbmA.fit, gam = model.gam, glm = model.glm, glmn = model.glmn, lda = model.lda, mars = model.mars, nb = model.nb, qda = model.qda, rf = rf.fit, rpart = rpart.fit, svml1 = svml.fit, svml2 = svml.fit2, svmr1 = svmr.fit, svmr2 = svmr.fit2, svmr3 = svmr.fit3))
+
+summary(res)
+bwplot(res, metric = "ROC")
+```
+
+```{r}
+vip(model.glmn$finalModel)
+
+p1 <- pdp::partial(model.glmn, pred.var = c("fractal_dimension_se"), grid.resolution = 10) %>%
+  autoplot()
+p2 <- pdp::partial(model.glmn, pred.var = c("concave_points_se"), grid.resolution = 10) %>%
+  autoplot()
+p3 <- pdp::partial(model.glmn, pred.var = c("fractal_dimension_worst"), grid.resolution = 10) %>%
+  autoplot()
+p4 <- pdp::partial(model.glmn, pred.var = c("fractal_dimension_mean"), grid.resolution = 10) %>%
+  autoplot()
+p5 <- pdp::partial(model.glmn, pred.var = c("smoothness_se"), grid.resolution = 10) %>%
+  autoplot()
+p6 <- pdp::partial(model.glmn, pred.var = c("concave_points_mean"), grid.resolution = 10) %>%
+  autoplot()
+p7 <- pdp::partial(model.glmn, pred.var = c("compactness_se"), grid.resolution = 10) %>%
+  autoplot()
+p8 <- pdp::partial(model.glmn, pred.var = c("symmetry_se"), grid.resolution = 10) %>%
+  autoplot()
+p9 <- pdp::partial(model.glmn, pred.var = c("smoothness_worst"), grid.resolution = 10) %>%
+  autoplot()
+
+(p1+p2+p3)/(p4+p5+p6)/(p7+p8+p9)
 ```
 
