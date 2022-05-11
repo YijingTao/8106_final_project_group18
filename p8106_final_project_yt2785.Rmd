@@ -223,9 +223,7 @@ myPar <- list(superpose.symbol = list(col = myCol),
 
 plot(model.glmn, par.settings = myPar, xTrans = function(x) log(x))
 
-vip(model.glmn$finalModel)
-summary(model.glmn$finalModel)
-plot(model.glmn$finalModel)
+coef(model.glmn$finalModel,model.glmn$bestTune$lambda)
 train.pred.prob.glmn <- predict(model.glmn, newdata = train)
 glmn_matrix_train <- confusionMatrix(data = train.pred.prob.glmn,
                 reference = train$diagnosis,
