@@ -486,7 +486,6 @@ load("./result/model.rpart.RData")
 log(rpart.fit$bestTune)
 ggplot(rpart.fit, highlight = TRUE)
 
-rpart.fit$finalModel
 rpart.plot(rpart.fit$finalModel)
 
 train.pred.prob.rpart <- predict(rpart.fit, newdata = train)
