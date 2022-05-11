@@ -158,7 +158,7 @@ partimat(diagnosis ~ .,
 
 ## KNN model
 ```{r}
-kGrid <- expand.grid(k = seq(from = 1, to = 20, by = 1))
+kGrid <- expand.grid(k = seq(from = 1, to = 30, by = 1))
 set.seed(2022)
 knn.fit <- train(diagnosis ~., 
                 data = train, 
@@ -295,8 +295,6 @@ load("./result/model.gam.RData")
 
 ```{r}
 model.gam$finalModel
-log(model.gam$finalModele$lambda)
-plot(model.gam$finalModel, select = 3)
 
 train.pred.prob.gam<- predict(model.gam, newdata = train)
 gam_matrix_train <- confusionMatrix(data = train.pred.prob.gam,
@@ -323,7 +321,7 @@ model.mars <- train(x = train[,1:30],
                     y = train$diagnosis,
                     method = "earth",
                     tuneGrid = expand.grid(degree = 1:4, 
-                                           nprune = 2:20),
+                                           nprune = 1:30),
                     metric = "ROC",
                     trControl = ctrl)
 ```
@@ -335,6 +333,7 @@ load("./result/model.mars.RData")
 ```
 
 ```{r}
+model.mars$bestTune
 train.pred.prob.mars <- predict(model.mars, newdata = train)
 mars_matrix_train <- confusionMatrix(data = train.pred.prob.mars,
                 reference = train$diagnosis,
@@ -369,6 +368,8 @@ load("./result/model.lda.RData")
 ```
 
 ```{r}
+model.lda$bestTune
+
 train.pred.prob.lda <- predict(model.lda, newdata = train)
 lda_matrix_train <- confusionMatrix(data = train.pred.prob.lda,
                 reference = train$diagnosis,
@@ -403,6 +404,8 @@ load("./result/model.qda.RData")
 ```
 
 ```{r}
+model.qda$bestTune
+
 train.pred.prob.qda <- predict(model.qda, newdata = train)
 qda_matrix_train <- confusionMatrix(data = train.pred.prob.qda,
                 reference = train$diagnosis,
@@ -426,7 +429,7 @@ nbGrid <- expand.grid(usekernel = c(FALSE,TRUE),
                       fL = 1, 
                       adjust = seq(.2, 3, by = .2))
 
-set.seed(11)
+set.seed(2022)
 model.nb <- train(x = train[,1:30],
                   y = train$diagnosis,
                   method = "nb",
@@ -442,6 +445,8 @@ load("./result/model.nb.RData")
 ```
 
 ```{r warning=FALSE}
+model.nb$bestTune
+
 plot(model.nb)
 train.pred.prob.nb <- predict(model.nb, newdata = train)
 nb_matrix_train <- confusionMatrix(data = train.pred.prob.nb,
@@ -460,7 +465,7 @@ test_err_rate_nb = as.data.frame(1-nb_matrix$overall[1])[1,]
 test_err_rate_nb 
 ```
 
-## tree
+## Classification tree
 ```{r}
 set.seed(2022)
 rpart.fit <- train(diagnosis ~ . , 
@@ -478,7 +483,10 @@ load("./result/model.rpart.RData")
 ```
 
 ```{r}
+log(rpart.fit$bestTune)
 ggplot(rpart.fit, highlight = TRUE)
+
+rpart.fit$finalModel
 rpart.plot(rpart.fit$finalModel)
 
 train.pred.prob.rpart <- predict(rpart.fit, newdata = train)
@@ -517,6 +525,9 @@ load("./result/model.ctree.RData")
 ```
 
 ```{r, fig.width=15, fig.height=6}
+ctree.fit$bestTune
+log(1-ctree.fit$bestTune)
+
 ggplot(ctree.fit, highlight = TRUE)
 plot(ctree.fit$finalModel)
 
@@ -559,6 +570,8 @@ load("./result/model.rf.RData")
 ```
 
 ```{r}
+rf.fit$bestTune
+
 ggplot(rf.fit, highlight = TRUE)
 #plot(rf.fit$finalModel)
 
@@ -582,7 +595,7 @@ test_err_rate_rf
 ### AdaBoost
 
 ```{r}
-gbmA.grid <- expand.grid(n.trees = c(2000,3000,4000,5000),
+gbmA.grid <- expand.grid(n.trees = c(4000,5000, 6000,7000),
                          interaction.depth = 2:8,
                          shrinkage = c(0.0005,0.001,0.002),
                          n.minobsinnode = 1)
@@ -658,6 +671,9 @@ load("./result/model.svml.RData")
 ```
 
 ```{r}
+svml.fit$bestTune
+log(svml.fit$bestTune)
+
 ggplot(svml.fit, highlight = TRUE)
 
 train.pred.prob.svml <- predict(svml.fit, newdata = train)
@@ -684,6 +700,9 @@ load("./result/model.svml2.RData")
 ```
 
 ```{r}
+svml.fit2$bestTune
+log(svml.fit2$bestTune)
+
 ggplot(svml2.fit, highlight = TRUE)
 
 train.pred.prob.svml2 <- predict(svml.fit2, newdata = train)
@@ -749,6 +768,9 @@ load("./result/model.svmr.RData")
 ```
 
 ```{r}
+svmr.fit$bestTune
+log(svmr.fit$bestTune)
+
 ggplot(svmr.fit, highlight = TRUE)
 
 train.pred.prob.svmr <- predict(svmr.fit, newdata = train)
@@ -775,6 +797,9 @@ load("./result/model.svmr2.RData")
 ```
 
 ```{r}
+svmr.fit2$bestTune
+log(svmr.fit2$bestTune)
+
 ggplot(svml2.fit, highlight = TRUE)
 
 train.pred.prob.svmr2 <- predict(svmr.fit2, newdata = train)
@@ -801,6 +826,9 @@ load("./result/model.svmr3.RData")
 ```
 
 ```{r}
+svmr.fit3$bestTune
+log(svmr.fit3$bestTune)
+
 ggplot(svml2.fit, highlight = TRUE)
 
 train.pred.prob.svmr3 <- predict(svmr.fit3, newdata = train)
@@ -962,3 +990,4 @@ fviz_pca_ind(pca_w,
              label = "none",
              addEllipses = TRUE)
 ```
+
