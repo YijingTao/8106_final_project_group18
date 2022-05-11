@@ -1,0 +1,627 @@
+---
+title: "report_sarah"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(ISLR)
+library(glmnet)
+library(caret)
+library(corrplot)
+library(plotmo)
+library(mgcv)
+library(earth)
+library(splines)
+library(mgcv)
+library(pdp)
+library(earth)
+library(tidyverse)
+library(ggplot2)
+library(lasso2)
+library(vip)
+library(summarytools)
+library(ISLR)
+library(caret)
+library(vip)
+library(pdp)
+library(lime)
+library(mlbench)
+library(ISLR)
+library(caret)
+library(e1071)
+library(kernlab)
+library(factoextra)
+library(gridExtra)
+library(corrplot)
+library(RColorBrewer) 
+library(gplots)
+library(jpeg)
+library(klaR)
+library(pROC)
+library(rpart)
+library(patchwork)
+```
+
+## import data set (70% to train data while 30% to test data)
+```{r}
+dat_df_nores = read_csv("./data.csv") %>% 
+  dplyr::select(-diagnosis)
+dat_df_res = read_csv("./data.csv") %>% 
+  dplyr::select(diagnosis)
+dat_df_wait = cbind(dat_df_nores, dat_df_res) 
+dat_df <- dat_df_wait[,2:32]
+rownames(dat_df) = dat_df_wait[,1]
+
+dat_df2 <- model.matrix(diagnosis ~ ., dat_df)[ ,-1]
+#assign 70% to the training set and the rest 30% to the test set 
+set.seed(2022)
+trainRows <- createDataPartition(dat_df$diagnosis, p = .7, list = F)
+
+train <- dat_df[trainRows,]
+x1 <- dat_df2[trainRows,]
+train$diagnosis[which(train$diagnosis =='M')] <- 'neg'
+train$diagnosis[which(train$diagnosis =='B')] <- 'pos'
+train <- train %>% 
+  mutate(diagnosis = as.factor(diagnosis))
+y1 <- train$diagnosis
+
+# matrix of predictors (glmnet uses input matrix)
+test <- dat_df[-trainRows,]
+x2 <- dat_df2[-trainRows,]
+test$diagnosis[which(test$diagnosis =='M')] <- 'neg'
+test$diagnosis[which(test$diagnosis =='B')] <- 'pos'
+test <- test %>% 
+  mutate(diagnosis = as.factor(diagnosis))
+y2 <- test$diagnosis
+
+ctrl <- trainControl(method = "repeatedcv",
+                     summaryFunction = twoClassSummary,
+                     classProbs = TRUE)
+
+sum(dat_df_res$diagnosis == "B")
+```
+
+## visualization
+```{r}
+dfSummary(dat_df[,-1])
+```
+
+```{r, fig.height = 4}
+train_radius <- train %>% 
+  dplyr::select(radius_mean,
+                radius_se,
+                radius_worst,diagnosis)
+train_texture <- train %>% 
+  dplyr::select(texture_mean,
+                texture_se,
+                texture_worst,diagnosis)
+train_perimeter <- train %>% 
+  dplyr::select(perimeter_mean,
+                perimeter_se,
+                perimeter_worst,diagnosis)
+train_area <- train %>% 
+  dplyr::select(area_mean,
+                area_se,
+                area_worst,diagnosis)
+train_smoothness <- train %>% 
+  dplyr::select(smoothness_mean,
+                smoothness_se,
+                smoothness_worst,diagnosis)
+train_compactness <- train %>% 
+  dplyr::select(compactness_mean,
+                compactness_se,
+                compactness_worst,diagnosis)
+train_concavity <- train %>% 
+  dplyr::select(concavity_mean,
+                concavity_se,
+                concavity_worst,diagnosis)
+train_concave_points <- train %>% 
+  dplyr::select(concave_points_mean,
+                concave_points_se,
+                concave_points_worst,diagnosis)
+train_symmetry <- train %>% 
+  dplyr::select(symmetry_mean,
+                symmetry_se,
+                symmetry_worst,diagnosis)
+train_fractal_dimension <- train %>% 
+  dplyr::select(fractal_dimension_mean,
+                fractal_dimension_se,
+                fractal_dimension_worst,diagnosis)
+
+partimat(diagnosis ~ ., 
+         data = train_radius, method = "lda")
+partimat(diagnosis ~ ., 
+         data = train_texture, method = "lda")
+partimat(diagnosis ~ ., 
+         data = train_perimeter, method = "lda")
+partimat(diagnosis ~ ., 
+         data = train_area, method = "lda")
+partimat(diagnosis ~ ., 
+         data = train_smoothness, method = "lda")
+partimat(diagnosis ~ ., 
+         data = train_compactness, method = "lda")
+partimat(diagnosis ~ ., 
+         data = train_concavity, method = "lda")
+partimat(diagnosis ~ ., 
+         data = train_concave_points, method = "lda")
+partimat(diagnosis ~ ., 
+         data = train_symmetry, method = "lda")
+partimat(diagnosis ~ ., 
+         data = train_fractal_dimension, method = "lda")
+```
+
+### feature plot
+```{r}
+data = read_csv("./data.csv") %>%
+  mutate(diagnosis = as.factor(diagnosis))
+summary(data)
+featurePlot(x = data[, 3:12], 
+            y = data$diagnosis,
+            scales = list(x = list(relation = "free"), 
+                          y = list(relation = "free")),
+            plot = "density", pch = "|", 
+            auto.key = list(columns = 2))
+
+featurePlot(x = data[, 13:22], 
+            y = data$diagnosis,
+            scales = list(x = list(relation = "free"), 
+                          y = list(relation = "free")),
+            plot = "density", pch = "|", 
+            auto.key = list(columns = 2))
+
+featurePlot(x = data[, 23:32], 
+            y = data$diagnosis,
+            scales = list(x = list(relation = "free"), 
+                          y = list(relation = "free")),
+            plot = "density", pch = "|", 
+            auto.key = list(columns = 2))
+
+```
+
+
+## model loading
+###  glm 
+
+```{r eval=FALSE, include=FALSE}
+load("./result/model.glm.RData")
+
+test.pred.prob.glm <- predict(model.glm, newdata = test)
+glm_matrix <- confusionMatrix(data = test.pred.prob.glm,
+                reference = test$diagnosis,
+                positive = "pos")
+glm_matrix 
+```
+
+### Penalized logistic regression
+```{r}
+load("./result/model.glmn.RData")
+```
+
+```{r}
+model.glmn$bestTune
+log(model.glmn$bestTune$lambda)
+
+myCol<- rainbow(25)
+myPar <- list(superpose.symbol = list(col = myCol),
+              superpose.line = list(col = myCol))
+
+plot(model.glmn, par.settings = myPar, xTrans = function(x) log(x))
+
+test.pred.prob.glmn <- predict(model.glmn, newdata = test)
+glmn_matrix <- confusionMatrix(data = test.pred.prob.glmn,
+                reference = test$diagnosis,
+                positive = "pos")
+glmn_matrix 
+```
+
+### GAM
+
+```{r}
+load("./result/model.gam.RData")
+```
+
+```{r}
+model.gam$finalModel
+log(model.gam$finalModele$lambda)
+plot(model.gam$finalModel, select = 3)
+
+test.pred.prob.gam<- predict(model.gam, newdata = test)
+gam_matrix <- confusionMatrix(data = test.pred.prob.gam,
+                reference = test$diagnosis,
+                positive = "pos")
+gam_matrix 
+```
+
+### MARS
+
+```{r}
+load("./result/model.mars.RData")
+```
+
+```{r}
+plot(model.mars)
+
+coef(model.mars$finalModel) 
+
+pdp::partial(model.mars, pred.var = c("age"), grid.resolution = 200) %>% autoplot()
+
+vip(model.mars$finalModel)
+
+test.pred.prob.mars <- predict(model.mars, newdata = test)
+mars_matrix <- confusionMatrix(data = test.pred.prob.mars,
+                reference = test$diagnosis,
+                positive = "pos")
+mars_matrix 
+```
+
+### LDA
+```{r}
+load("./result/model.lda.RData")
+```
+
+```{r}
+test.pred.prob.lda <- predict(model.lda, newdata = test)
+lda_matrix <- confusionMatrix(data = test.pred.prob.lda,
+                reference = test$diagnosis,
+                positive = "pos")
+lda_matrix
+```
+
+### QDA
+```{r}
+load("./result/model.qda.RData")
+```
+
+```{r}
+test.pred.prob.qda <- predict(model.qda, newdata = test)
+qda_matrix <- confusionMatrix(data = test.pred.prob.qda,
+                reference = test$diagnosis,
+                positive = "pos")
+qda_matrix 
+```
+
+### Naive Bayes (NB)
+```{r, warning=FALSE}
+load("./result/model.nb.RData")
+```
+
+```{r}
+plot(model.nb)
+test.pred.prob.nb <- predict(model.nb, newdata = test)
+nb_matrix <- confusionMatrix(data = test.pred.prob.nb,
+                reference = test$diagnosis,
+                positive = "pos")
+nb_matrix 
+```
+
+### tree
+```{r}
+load("./result/model.rpart.RData")
+```
+
+```{r}
+ggplot(rpart.fit, highlight = TRUE)
+rpart.plot(rpart.fit$finalModel)
+
+test.pred.prob.rpart <- predict(model.rpart, newdata = test)
+rpart_matrix <- confusionMatrix(data = test.pred.prob.rpart,
+                reference = test$diagnosis,
+                positive = "pos")
+rpart_matrix
+```
+
+### CIT
+
+```{r}
+load("./result/model.ctree.RData")
+```
+
+```{r, fig.width=15, fig.height=6}
+ggplot(ctree.fit, highlight = TRUE)
+plot(ctree.fit$finalModel)
+
+test.pred.prob.ctree <- predict(model.ctree, newdata = test)
+ctree_matrix <- confusionMatrix(data = test.pred.prob.ctree,
+                reference = test$diagnosis,
+                positive = "pos")
+ctree_matrix
+```
+
+### Random forests
+
+```{r}
+load("./result/model.rf.RData")
+```
+
+```{r}
+ggplot(rf.fit, highlight = TRUE)
+
+rf.pred <- predict(rf.fit, newdata = test, type = "prob")[,1]
+
+test.pred.prob.rf <- predict(model.rf, newdata = test)
+rf_matrix <- confusionMatrix(data = test.pred.prob.rf,
+                reference = test$diagnosis,
+                positive = "pos")
+rf_matrix
+```
+
+### AdaBoost
+
+```{r}
+load("./result/model.gbmA.RData")
+```
+
+```{r}
+ggplot(gbmA.fit, highlight = TRUE)
+gbmA.pred <- predict(gbmA.fit, newdata = test, type = "prob")[,1]
+
+test.pred.prob.gbmA <- predict(model.gbmA, newdata = test)
+gbmA_matrix <- confusionMatrix(data = test.pred.prob.gbmA,
+                reference = test$diagnosis,
+                positive = "pos")
+gbmA_matrix
+```
+
+### linear kernl
+```{r}
+# kernlab
+set.seed(2022)
+svml.fit <- train(diagnosis ~ . , 
+                  data = train, 
+                  method = "svmLinear",
+                  # preProcess = c("center", "scale"),
+                  tuneGrid = data.frame(C = exp(seq(-5,2,len=50))),
+                  trControl = ctrl)
+
+plot(svml.fit, highlight = TRUE, xTrans = log)
+
+log(svml.fit$bestTune)
+
+# e1071
+set.seed(2022)
+svml.fit2 <- train(diagnosis ~ . , 
+                  data = train, 
+                  method = "svmLinear2",
+                  tuneGrid = data.frame(cost = exp(seq(-5,2,len=50))),
+                  trControl = ctrl)
+
+plot(svml.fit2, highlight = TRUE, xTrans = log)
+log(svml.fit2$bestTune)
+```
+
+```{r eval=FALSE, include=FALSE}
+load("./result/model.svml.RData")
+load("./result/model.svml2.RData")
+```
+
+### radial
+
+```{r eval=FALSE, include=FALSE}
+load("./result/model.svmr.RData")
+load("./result/model.svmr2.RData")
+load("./result/model.svmr3.RData")
+```
+
+
+## model comparing 
+
+```{r}
+res = resamples(list(gbmA = gbmA.fit, gam = model.gam, glm = model.glm, glmn = model.glmn, lda = model.lda, mars = model.mars, nb = model.nb, qda = model.qda, rf = rf.fit, rpart = rpart.fit, svml1 = svml.fit, svml2 = svml.fit2, svmr1 = svmr.fit, svmr2 = svmr.fit2, svmr3 = svmr.fit3))
+
+summary(res)
+bwplot(res, metric = "ROC")
+
+res_2 = resamples(list(glmn = model.glmn, svmr1 = svmr.fit, svmr2 = svmr.fit2, svmr3 = svmr.fit3))
+
+summary(res_2)
+bwplot(res_2, metric = "ROC")  ## svmr1 is the best
+```
+
+## clustering visualization
+### K means clustering
+```{r}
+dat <- dat_df
+dat$diagnosis[which(dat$diagnosis == 'M')] <- '0'
+dat$diagnosis[which(dat$diagnosis == 'B')] <- '1'
+
+train_scl <- scale(train[,1:30])
+test_scl <- scale(test[,1:30])
+dat_scl <- rbind(train_scl,test_scl)
+```
+
+```{r, fig.height=3.5}
+set.seed(2022)
+fviz_nbclust(dat_scl,
+             FUNcluster = kmeans,
+             method = "silhouette")
+
+km <- kmeans(dat_scl, centers = 2, nstart = 20)
+
+k_cluster_res = as.data.frame(km$cluster) %>%
+  mutate(cluster = km$cluster) %>%
+  mutate(cluster_2 = cluster - 1)
+
+res_2 = cbind(k_cluster_res, dat_df_wait) %>% dplyr::select(id, cluster_2)
+
+class_1_id = as.list((res_2 %>% filter(cluster_2 == 0))$id)
+class_1_data = NULL
+for (i in 1:569) {
+  if (as.numeric(res_2$cluster_2[i]) == 0) {
+    class_1_data = rbind(class_1_data, dat_df_wait[i, ])
+  }
+}
+
+confusionMatrix(data = as.factor(k_cluster_res$cluster_2),
+                reference = as.factor(dat$diagnosis),
+                positive = "0")
+
+cor_pred = 0
+for (i in 1:569) {
+  if (k_cluster_res[i,]$cluster_2 == dat$diagnosis[i]) {
+    cor_pred = cor_pred + 1
+  }
+}
+cor_pred/596 ## low accurancy, much worse than model fitting
+```
+
+```{r}
+fviz_cluster(list(data = dat_scl, cluster = km$cluster), 
+                       ellipse.type = "convex", 
+                       geom = c("point","text"),
+                       labelsize = 5, 
+                       palette = "Dark2") + labs(title = "K-means") 
+
+```
+
+### Hierarchical clustering
+```{r}
+hc.complete <- hclust(dist(dat_scl), method = "complete")
+hc.average <- hclust(dist(dat_scl), method = "average")
+hc.single <- hclust(dist(dat_scl), method = "single")
+hc.centroid <- hclust(dist(dat_scl), method = "centroid")
+```
+
+The function `fviz_dend()` can be applied to visualize the dendrogram.
+
+```{r, fig.width=7}
+clu_com <- fviz_dend(hc.complete, k = 4,        
+          cex = 0.3, 
+          palette = "jco", 
+          color_labels_by_k = TRUE,
+          rect = TRUE, rect_fill = TRUE, rect_border = "jco",
+          labels_track_height = 2.5)
+
+clu_aver <- fviz_dend(hc.average, k = 4,        
+          cex = 0.3, 
+          palette = "jco", 
+          color_labels_by_k = TRUE,
+          rect = TRUE, rect_fill = TRUE, rect_border = "jco",
+          labels_track_height = 2.5)
+
+clu_single <- fviz_dend(hc.single, k = 4,        
+          cex = 0.3, 
+          palette = "jco", 
+          color_labels_by_k = TRUE,
+          rect = TRUE, rect_fill = TRUE, rect_border = "jco",
+          labels_track_height = 2.5)
+
+clu_cen <- fviz_dend(hc.centroid, k = 4,        
+          cex = 0.3, 
+          palette = "jco", 
+          color_labels_by_k = TRUE,
+          rect = TRUE, rect_fill = TRUE, rect_border = "jco",
+          labels_track_height = 2.5)
+
+clu_com+clu_aver+clu_single+clu_cen
+
+ind4.complete <- cutree(hc.complete, 4)
+ind4.aver <- cutree(hc.average, 4)
+ind4.single <- cutree(hc.single, 4)
+ind4.cen <- cutree(hc.centroid, 4)
+
+clu_com_1 <- rownames(dat_scl[ind4.complete == 1,])
+clu_com_2 <- rownames(dat_scl[ind4.complete == 2,])
+clu_com_3 <- rownames(dat_scl[ind4.complete == 3,])
+clu_com_4 <- rownames(dat_scl[ind4.complete == 4,])
+length(clu_com_1)
+length(clu_com_2)
+length(clu_com_3)
+length(clu_com_4)
+
+clu_aver_1 <- rownames(dat_scl[ind4.aver == 1,])
+clu_aver_2 <- rownames(dat_scl[ind4.aver == 2,])
+clu_aver_3 <- rownames(dat_scl[ind4.aver == 3,])
+clu_aver_4 <- rownames(dat_scl[ind4.aver == 4,])
+length(clu_aver_1)
+length(clu_aver_2)
+length(clu_aver_3)
+length(clu_aver_4)
+
+clu_single_1 <- rownames(dat_scl[ind4.single == 1,])
+clu_single_2 <- rownames(dat_scl[ind4.single == 2,])
+clu_single_3 <- rownames(dat_scl[ind4.single == 3,])
+clu_single_4 <- rownames(dat_scl[ind4.single == 4,])
+length(clu_single_1)
+length(clu_single_2)
+length(clu_single_3)
+length(clu_single_4)
+
+clu_cen_1 <- rownames(dat_scl[ind4.cen == 1,])
+clu_cen_2 <- rownames(dat_scl[ind4.cen == 2,])
+clu_cen_3 <- rownames(dat_scl[ind4.cen == 3,])
+clu_cen_4 <- rownames(dat_scl[ind4.cen == 4,])
+length(clu_cen_1)
+length(clu_cen_2)
+length(clu_cen_3)
+length(clu_cen_4)
+```
+
+To display more details, we show the heatmap of the data.
+
+```{r, fig.width = 12, fig.height=7}
+display.brewer.all(n=NULL, type="all", select=NULL, exact.n=TRUE)
+col1 <- colorRampPalette(brewer.pal(9, "GnBu"))(100)
+col2 <- colorRampPalette(brewer.pal(3, "Spectral"))(2)
+
+heatmap.2(t(dat), 
+          col = col1, keysize=.8, key.par = list(cex=.5),
+          trace = "none", key = TRUE, cexCol = 0.75, 
+          labCol = as.character(dat[,1]),
+          ColSideColors = col2[as.numeric(dat[,"diagnosis"])+1],
+          margins = c(10, 10))
+```
+
+### PCA
+
+The function `prcomp()` can be used to perform PCA.
+
+```{r, fig.height=3}
+mean <- dat[1:10]
+diag <- dat[,31]
+mean_scl <- scale(mean)
+
+pca <- prcomp(dat_scl)
+pca$rotation
+pca$sdev
+pca$rotation %*% diag(pca$sdev)
+corrplot(pca$rotation %*% diag(pca$sdev))
+
+var <- get_pca_var(pca)
+corrplot(var$cor)
+```
+
+The function `fviz_eig()` plots the eigenvalues/variances against the number of dimensions. 
+
+```{r, fig.height=4}
+fviz_eig(pca, addlabels = TRUE)
+```
+
+
+The function `fviz_pca_biplot()` can be used to obtain the biplot of individuals and variables.
+
+```{r, fig.height=4}
+fviz_pca_biplot(pca, axes = c(1,2),
+                habillage = ifelse(dat$Legendary==TRUE, "Legendary","Not legendary"),
+                label = c("var"),
+                addEllipses = TRUE) 
+
+fviz_pca_var(pca, col.var = "steelblue", repel = TRUE)
+fviz_pca_ind(pca,
+             habillage = ifelse(dat$Legendary==TRUE,"Legendary","Not legendary"),
+             label = "none",
+             addEllipses = TRUE)
+```
+
+
+
+
+
+
+
