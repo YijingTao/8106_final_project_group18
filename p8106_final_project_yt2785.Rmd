@@ -46,7 +46,7 @@ library(gplots)
 library(jpeg)
 library(klaR)
 library(pROC)
-library(rpart)
+library(rpart.plot)
 library(patchwork)
 ```
 
@@ -59,11 +59,6 @@ dat_df_res = read_csv("./data.csv") %>%
 dat_df_wait = cbind(dat_df_nores, dat_df_res) 
 dat_df <- dat_df_wait[,2:32]
 rownames(dat_df) = dat_df_wait[,1]
-
-#dat <- read.csv("Pokemon.csv")
-#dat1 <- dat[,2:7]
-#dat1 <- scale(dat1)
-#rownames(dat1) <- dat[,1]
 
 dat_df2 <- model.matrix(diagnosis ~ ., dat_df)[ ,-1]
 #assign 70% to the training set and the rest 30% to the test set 
@@ -183,11 +178,21 @@ load("./result/model.knn.RData")
 ggplot(knn.fit)
 knn.fit$bestTune
 
+train.pred.prob.knn <- predict(knn.fit, newdata = train)
+knn_matrix_train <- confusionMatrix(data = train.pred.prob.knn,
+                reference = train$diagnosis,
+                positive = "pos")
+
+train_err_rate_knn = as.data.frame(1-knn_matrix_train$overall[1])[1,]
+train_err_rate_knn
+
 test.pred.prob.knn <- predict(knn.fit, newdata = test)
 knn_matrix <- confusionMatrix(data = test.pred.prob.knn,
                 reference = test$diagnosis,
                 positive = "pos")
-knn_matrix 
+
+test_err_rate_knn = as.data.frame(1-knn_matrix$overall[1])[1,]
+test_err_rate_knn
 ```
 
 ## glm model
@@ -209,11 +214,20 @@ load("./result/model.glm.RData")
 ```
 
 ```{r}
+train.pred.prob.glm <- predict(model.glm, newdata = train)
+glm_matrix_train <- confusionMatrix(data = train.pred.prob.glm,
+                reference = train$diagnosis,
+                positive = "pos")
+
+train_err_rate_glm = as.data.frame(1-glm_matrix_train$overall[1])[1,]
+train_err_rate_glm
+
 test.pred.prob.glm <- predict(model.glm, newdata = test)
 glm_matrix <- confusionMatrix(data = test.pred.prob.glm,
                 reference = test$diagnosis,
                 positive = "pos")
-glm_matrix 
+test_err_rate_glm = as.data.frame(1-glm_matrix$overall[1])[1,]
+test_err_rate_glm
 ```
 
 ## Penalized logistic regression
@@ -245,11 +259,21 @@ myPar <- list(superpose.symbol = list(col = myCol),
 
 plot(model.glmn, par.settings = myPar, xTrans = function(x) log(x))
 
+train.pred.prob.glmn <- predict(model.glmn, newdata = train)
+glmn_matrix_train <- confusionMatrix(data = train.pred.prob.glmn,
+                reference = train$diagnosis,
+                positive = "pos")
+
+train_err_rate_glmn = as.data.frame(1-glmn_matrix_train$overall[1])[1,]
+train_err_rate_glmn
+
 test.pred.prob.glmn <- predict(model.glmn, newdata = test)
 glmn_matrix <- confusionMatrix(data = test.pred.prob.glmn,
                 reference = test$diagnosis,
                 positive = "pos")
-glmn_matrix 
+
+test_err_rate_glmn = as.data.frame(1-glmn_matrix$overall[1])[1,]
+test_err_rate_glmn
 ```
 
 ## GAM
@@ -274,11 +298,21 @@ model.gam$finalModel
 log(model.gam$finalModele$lambda)
 plot(model.gam$finalModel, select = 3)
 
+train.pred.prob.gam<- predict(model.gam, newdata = train)
+gam_matrix_train <- confusionMatrix(data = train.pred.prob.gam,
+                reference = train$diagnosis,
+                positive = "pos")
+
+train_err_rate_gam = as.data.frame(1-gam_matrix_train$overall[1])[1,]
+train_err_rate_gam
+
 test.pred.prob.gam<- predict(model.gam, newdata = test)
 gam_matrix <- confusionMatrix(data = test.pred.prob.gam,
                 reference = test$diagnosis,
                 positive = "pos")
-gam_matrix 
+
+test_err_rate_gam = as.data.frame(1-gam_matrix$overall[1])[1,]
+test_err_rate_gam
 ```
 
 ## MARS
@@ -301,17 +335,21 @@ load("./result/model.mars.RData")
 ```
 
 ```{r}
-plot(model.mars)
+train.pred.prob.mars <- predict(model.mars, newdata = train)
+mars_matrix_train <- confusionMatrix(data = train.pred.prob.mars,
+                reference = train$diagnosis,
+                positive = "pos")
 
-coef(model.mars$finalModel) 
-
-vip(model.mars$finalModel)
+train_err_rate_mars = as.data.frame(1-mars_matrix_train$overall[1])[1,]
+train_err_rate_mars
 
 test.pred.prob.mars <- predict(model.mars, newdata = test)
 mars_matrix <- confusionMatrix(data = test.pred.prob.mars,
                 reference = test$diagnosis,
                 positive = "pos")
-mars_matrix 
+
+test_err_rate_mars = as.data.frame(1-mars_matrix$overall[1])[1,]
+test_err_rate_mars
 ```
 
 ## LDA
@@ -331,11 +369,21 @@ load("./result/model.lda.RData")
 ```
 
 ```{r}
+train.pred.prob.lda <- predict(model.lda, newdata = train)
+lda_matrix_train <- confusionMatrix(data = train.pred.prob.lda,
+                reference = train$diagnosis,
+                positive = "pos")
+
+train_err_rate_lda = as.data.frame(1-lda_matrix_train$overall[1])[1,]
+train_err_rate_lda
+
 test.pred.prob.lda <- predict(model.lda, newdata = test)
 lda_matrix <- confusionMatrix(data = test.pred.prob.lda,
                 reference = test$diagnosis,
                 positive = "pos")
-lda_matrix
+
+test_err_rate_lda = as.data.frame(1-lda_matrix$overall[1])[1,]
+test_err_rate_lda
 ```
 
 ## QDA
@@ -355,11 +403,21 @@ load("./result/model.qda.RData")
 ```
 
 ```{r}
+train.pred.prob.qda <- predict(model.qda, newdata = train)
+qda_matrix_train <- confusionMatrix(data = train.pred.prob.qda,
+                reference = train$diagnosis,
+                positive = "pos")
+
+train_err_rate_qda = as.data.frame(1-qda_matrix_train$overall[1])[1,]
+train_err_rate_qda
+
 test.pred.prob.qda <- predict(model.qda, newdata = test)
 qda_matrix <- confusionMatrix(data = test.pred.prob.qda,
                 reference = test$diagnosis,
                 positive = "pos")
-qda_matrix 
+
+test_err_rate_qda = as.data.frame(1-qda_matrix$overall[1])[1,]
+test_err_rate_qda
 ```
 
 ## Naive Bayes (NB)
@@ -383,13 +441,23 @@ save(model.nb, file = "./result/model.nb.RData")
 load("./result/model.nb.RData")
 ```
 
-```{r}
+```{r warning=FALSE}
 plot(model.nb)
+train.pred.prob.nb <- predict(model.nb, newdata = train)
+nb_matrix_train <- confusionMatrix(data = train.pred.prob.nb,
+                reference = train$diagnosis,
+                positive = "pos")
+
+train_err_rate_nb = as.data.frame(1-nb_matrix_train$overall[1])[1,]
+train_err_rate_nb
+
 test.pred.prob.nb <- predict(model.nb, newdata = test)
 nb_matrix <- confusionMatrix(data = test.pred.prob.nb,
                 reference = test$diagnosis,
                 positive = "pos")
-nb_matrix 
+
+test_err_rate_nb = as.data.frame(1-nb_matrix$overall[1])[1,]
+test_err_rate_nb 
 ```
 
 ## tree
@@ -413,11 +481,21 @@ load("./result/model.rpart.RData")
 ggplot(rpart.fit, highlight = TRUE)
 rpart.plot(rpart.fit$finalModel)
 
-test.pred.prob.rpart <- predict(model.rpart, newdata = test)
+train.pred.prob.rpart <- predict(rpart.fit, newdata = train)
+rpart_matrix_train <- confusionMatrix(data = train.pred.prob.rpart,
+                reference = train$diagnosis,
+                positive = "pos")
+
+train_err_rate_rpart = as.data.frame(1-rpart_matrix_train$overall[1])[1,]
+train_err_rate_rpart 
+
+test.pred.prob.rpart <- predict(rpart.fit, newdata = test)
 rpart_matrix <- confusionMatrix(data = test.pred.prob.rpart,
                 reference = test$diagnosis,
                 positive = "pos")
-rpart_matrix
+
+test_err_rate_rpart = as.data.frame(1-rpart_matrix$overall[1])[1,]
+test_err_rate_rpart 
 ```
 
 ### CIT
@@ -442,11 +520,21 @@ load("./result/model.ctree.RData")
 ggplot(ctree.fit, highlight = TRUE)
 plot(ctree.fit$finalModel)
 
-test.pred.prob.ctree <- predict(model.ctree, newdata = test)
+train.pred.prob.ctree <- predict(ctree.fit, newdata = train)
+ctree_matrix_train <- confusionMatrix(data = train.pred.prob.ctree,
+                reference = train$diagnosis,
+                positive = "pos")
+
+train_err_rate_ctree = as.data.frame(1-ctree_matrix_train$overall[1])[1,]
+train_err_rate_ctree
+
+test.pred.prob.ctree <- predict(ctree.fit, newdata = test)
 ctree_matrix <- confusionMatrix(data = test.pred.prob.ctree,
                 reference = test$diagnosis,
                 positive = "pos")
-ctree_matrix
+
+test_err_rate_ctree = as.data.frame(1-ctree_matrix$overall[1])[1,]
+test_err_rate_ctree
 ```
 
 ### Random forests
@@ -472,21 +560,30 @@ load("./result/model.rf.RData")
 
 ```{r}
 ggplot(rf.fit, highlight = TRUE)
+#plot(rf.fit$finalModel)
 
-rf.pred <- predict(rf.fit, newdata = test, type = "prob")[,1]
+train.pred.prob.rf <- predict(rf.fit, newdata = train)
+rf_matrix_train <- confusionMatrix(data = train.pred.prob.rf,
+                reference = train$diagnosis,
+                positive = "pos")
 
-test.pred.prob.rf <- predict(model.rf, newdata = test)
+train_err_rate_rf = as.data.frame(1-rf_matrix_train$overall[1])[1,]
+train_err_rate_rf
+
+test.pred.prob.rf <- predict(rf.fit, newdata = test)
 rf_matrix <- confusionMatrix(data = test.pred.prob.rf,
                 reference = test$diagnosis,
                 positive = "pos")
-rf_matrix
+
+test_err_rate_rf = as.data.frame(1-rf_matrix$overall[1])[1,]
+test_err_rate_rf
 ```
 
 ### AdaBoost
 
 ```{r}
 gbmA.grid <- expand.grid(n.trees = c(2000,3000,4000,5000),
-                         interaction.depth = 1:6,
+                         interaction.depth = 2:8,
                          shrinkage = c(0.0005,0.001,0.002),
                          n.minobsinnode = 1)
 set.seed(2022)
@@ -509,16 +606,25 @@ load("./result/model.gbmA.RData")
 
 ```{r}
 ggplot(gbmA.fit, highlight = TRUE)
-gbmA.pred <- predict(gbmA.fit, newdata = test, type = "prob")[,1]
 
-test.pred.prob.gbmA <- predict(model.gbmA, newdata = test)
+train.pred.prob.gbmA <- predict(gbmA.fit, newdata = train)
+gbmA_matrix_train <- confusionMatrix(data = train.pred.prob.gbmA,
+                reference = train$diagnosis,
+                positive = "pos")
+
+train_err_rate_gbmA = as.data.frame(1-gbmA_matrix_train$overall[1])[1,]
+train_err_rate_gbmA
+
+test.pred.prob.gbmA <- predict(gbmA.fit, newdata = test)
 gbmA_matrix <- confusionMatrix(data = test.pred.prob.gbmA,
                 reference = test$diagnosis,
                 positive = "pos")
-gbmA_matrix
+
+test_err_rate_gbmA = as.data.frame(1-gbmA_matrix$overall[1])[1,]
+test_err_rate_gbmA
 ```
 
-## linear
+## linear svm
 ```{r}
 # kernlab
 set.seed(2022)
@@ -551,13 +657,53 @@ save(svml.fit, file = "./result/model.svml.RData")
 load("./result/model.svml.RData")
 ```
 
+```{r}
+ggplot(svml.fit, highlight = TRUE)
+
+train.pred.prob.svml <- predict(svml.fit, newdata = train)
+svml_matrix_train <- confusionMatrix(data = train.pred.prob.svml,
+                reference = train$diagnosis,
+                positive = "pos")
+
+train_err_rate_svml = as.data.frame(1-svml_matrix_train$overall[1])[1,]
+train_err_rate_svml
+
+test.pred.prob.svml <- predict(svml.fit, newdata = test)
+svml_matrix <- confusionMatrix(data = test.pred.prob.svml,
+                reference = test$diagnosis,
+                positive = "pos")
+
+test_err_rate_svml = as.data.frame(1-svml_matrix$overall[1])[1,]
+test_err_rate_svml
+```
+
 ```{r eval=FALSE, include=FALSE}
 save(svml.fit2, file = "./result/model.svml2.RData")
 
 load("./result/model.svml2.RData")
 ```
 
-## radial
+```{r}
+ggplot(svml2.fit, highlight = TRUE)
+
+train.pred.prob.svml2 <- predict(svml.fit2, newdata = train)
+svml2_matrix_train <- confusionMatrix(data = train.pred.prob.svml2,
+                reference = train$diagnosis,
+                positive = "pos")
+
+train_err_rate_svml2 = as.data.frame(1-svml2_matrix_train$overall[1])[1,]
+train_err_rate_svml2
+
+test.pred.prob.svml2 <- predict(svml.fit2, newdata = test)
+svml2_matrix <- confusionMatrix(data = test.pred.prob.svml2,
+                reference = test$diagnosis,
+                positive = "pos")
+
+test_err_rate_svml2 = as.data.frame(1-svml2_matrix$overall[1])[1,]
+test_err_rate_svml2
+```
+
+## radial svm
 ```{r, fig.width=15, fig.height=8}
 svmr.grid <- expand.grid(C = exp(seq(-1,4,len=20)),
                          sigma = exp(seq(-6,-2,len=20)))
@@ -602,10 +748,50 @@ save(svmr.fit, file = "./result/model.svmr.RData")
 load("./result/model.svmr.RData")
 ```
 
+```{r}
+ggplot(svmr.fit, highlight = TRUE)
+
+train.pred.prob.svmr <- predict(svmr.fit, newdata = train)
+svmr_matrix_train <- confusionMatrix(data = train.pred.prob.svmr,
+                reference = train$diagnosis,
+                positive = "pos")
+
+train_err_rate_svmr = as.data.frame(1-svmr_matrix_train$overall[1])[1,]
+train_err_rate_svmr
+
+test.pred.prob.svmr <- predict(svmr.fit, newdata = test)
+svmr_matrix <- confusionMatrix(data = test.pred.prob.svmr,
+                reference = test$diagnosis,
+                positive = "pos")
+
+test_err_rate_svmr = as.data.frame(1-svmr_matrix$overall[1])[1,]
+test_err_rate_svmr
+```
+
 ```{r eval=FALSE, include=FALSE}
 save(svmr.fit2, file = "./result/model.svmr2.RData")
 
 load("./result/model.svmr2.RData")
+```
+
+```{r}
+ggplot(svml2.fit, highlight = TRUE)
+
+train.pred.prob.svmr2 <- predict(svmr.fit2, newdata = train)
+svmr2_matrix_train <- confusionMatrix(data = train.pred.prob.svmr2,
+                reference = train$diagnosis,
+                positive = "pos")
+
+train_err_rate_svmr2 = as.data.frame(1-svmr2_matrix_train$overall[1])[1,]
+train_err_rate_svmr2
+
+test.pred.prob.svmr2 <- predict(svmr.fit2, newdata = test)
+svmr2_matrix <- confusionMatrix(data = test.pred.prob.svmr2,
+                reference = test$diagnosis,
+                positive = "pos")
+
+test_err_rate_svmr2 = as.data.frame(1-svmr2_matrix$overall[1])[1,]
+test_err_rate_svmr2
 ```
 
 ```{r eval=FALSE, include=FALSE}
@@ -614,53 +800,24 @@ save(svmr.fit3, file = "./result/model.svmr3.RData")
 load("./result/model.svmr3.RData")
 ```
 
-### Variable importance
 ```{r}
-set.seed(2022)
-vip(rf.fit, 
-    method = "permute", 
-    train = train,
-    target = "Life.expectancy",
-    metric = "RMSE",
-    nsim = 10,
-    pred_wrapper = predict,
-    geom = "boxplot", 
-    all_permutations = TRUE,
-    mapping = aes_string(fill = "Variable")) 
-```
+ggplot(svml2.fit, highlight = TRUE)
 
-### pdp ?????
-```{r, fig.width = 8, fig.height = 4}
-pdp1.rf <- rf.fit %>% 
-  partial(pred.var = c("CRBI")) %>%
-  autoplot(train = train, rug = TRUE) 
+train.pred.prob.svmr3 <- predict(svmr.fit3, newdata = train)
+svmr3_matrix_train_train <- confusionMatrix(data = train.pred.prob.svmr3,
+                reference = train$diagnosis,
+                positive = "pos")
 
-pdp2.rf <- rf.fit %>% 
-  partial(pred.var = c("CRBI","CAtBat"), chull = TRUE) %>%
-  autoplot(train = train, rug = TRUE) 
+train_err_rate_svmr3 = as.data.frame(1-svmr3_matrix_train_train$overall[1])[1,]
+train_err_rate_svmr3
 
-grid.arrange(pdp1.rf, pdp2.rf, nrow = 1)
-```
+test.pred.prob.svmr3 <- predict(svmr.fit3, newdata = test)
+svmr3_matrix <- confusionMatrix(data = test.pred.prob.svmr3,
+                reference = test$diagnosis,
+                positive = "pos")
 
-### Individual conditional expectation (ICE) curves ???
-```{r, fig.width = 8, fig.height = 4}
-ice1.rf <- rf.fit %>% 
-  partial(pred.var = "CRBI", 
-          grid.resolution = 100,
-          ice = TRUE) %>%
-  autoplot(train = expect_df, alpha = .1) +
-  ggtitle("ICE, not centered") 
-
-ice2.rf <- rf.fit %>% 
-  partial(pred.var = "CRBI", 
-          grid.resolution = 100,
-          ice = TRUE) %>%
-  autoplot(train = expect_df, alpha = .1, 
-           center = TRUE) +
-  ggtitle("ICE, centered") 
-
-
-grid.arrange(ice1.rf, ice2.rf, nrow = 1)
+test_err_rate_svmr3 = as.data.frame(1-svmr3_matrix$overall[1])[1,]
+test_err_rate_svmr3
 ```
 
 # K means clustering
@@ -678,7 +835,7 @@ dat_scl <- rbind(train_scl,test_scl)
 fviz_nbclust(dat_scl,
              FUNcluster = kmeans,
              method = "silhouette")
-
+set.seed(2022)
 km <- kmeans(dat_scl, centers = 2, nstart = 20)
 ```
 
@@ -692,142 +849,116 @@ km_vis <- fviz_cluster(list(data = dat_scl, cluster = km$cluster),
 km_vis
 ```
 
-# Hierarchical clustering
 ```{r}
-hc.complete <- hclust(dist(dat_scl), method = "complete")
-hc.average <- hclust(dist(dat_scl), method = "average")
-hc.single <- hclust(dist(dat_scl), method = "single")
-hc.centroid <- hclust(dist(dat_scl), method = "centroid")
-```
+k_cluster_res = as.data.frame(km$cluster) %>%
+  mutate(cluster = km$cluster) %>%
+  mutate(cluster_2 = cluster - 1)
 
-The function `fviz_dend()` can be applied to visualize the dendrogram.
+class_1 = k_cluster_res %>% filter(cluster_2 == 0)
+class_2 = k_cluster_res %>% filter(cluster_2 == 1)
 
-```{r, fig.width=7}
-clu_com <- fviz_dend(hc.complete, k = 4,        
-          cex = 0.3, 
-          palette = "jco", 
-          color_labels_by_k = TRUE,
-          rect = TRUE, rect_fill = TRUE, rect_border = "jco",
-          labels_track_height = 2.5)
+id_list1 = rownames(class_1)
 
-clu_aver <- fviz_dend(hc.average, k = 4,        
-          cex = 0.3, 
-          palette = "jco", 
-          color_labels_by_k = TRUE,
-          rect = TRUE, rect_fill = TRUE, rect_border = "jco",
-          labels_track_height = 2.5)
+dat_cla1 = NULL
+dat_cla2 = NULL
+i=1
+for (i in 1:569) {
+  if (dat_df_wait$id[i] %in% id_list1){
+    dat_cla1 <- rbind(dat_cla1, dat_df_wait[i,])
+  }
+  else {
+    dat_cla2 <- rbind(dat_cla2, dat_df_wait[i,])
+  }
+}
+i=i+1
 
-clu_single <- fviz_dend(hc.single, k = 4,        
-          cex = 0.3, 
-          palette = "jco", 
-          color_labels_by_k = TRUE,
-          rect = TRUE, rect_fill = TRUE, rect_border = "jco",
-          labels_track_height = 2.5)
+c1m <- dim(dat_cla1 %>% filter(diagnosis == "M"))[1]
+c1b <- dim(dat_cla1 %>% filter(diagnosis == "B"))[1]
+c2m <- dim(dat_cla2 %>% filter(diagnosis == "M"))[1]
+c2b <- dim(dat_cla2 %>% filter(diagnosis == "B"))[1]
 
-clu_cen <- fviz_dend(hc.centroid, k = 4,        
-          cex = 0.3, 
-          palette = "jco", 
-          color_labels_by_k = TRUE,
-          rect = TRUE, rect_fill = TRUE, rect_border = "jco",
-          labels_track_height = 2.5)
-
-clu_com+clu_aver+clu_single+clu_cen
-
-ind4.complete <- cutree(hc.complete, 4)
-ind4.aver <- cutree(hc.average, 4)
-ind4.single <- cutree(hc.single, 4)
-ind4.cen <- cutree(hc.centroid, 4)
-
-clu_com_1 <- rownames(dat_scl[ind4.complete == 1,])
-clu_com_2 <- rownames(dat_scl[ind4.complete == 2,])
-clu_com_3 <- rownames(dat_scl[ind4.complete == 3,])
-clu_com_4 <- rownames(dat_scl[ind4.complete == 4,])
-length(clu_com_1)
-length(clu_com_2)
-length(clu_com_3)
-length(clu_com_4)
-
-clu_aver_1 <- rownames(dat_scl[ind4.aver == 1,])
-clu_aver_2 <- rownames(dat_scl[ind4.aver == 2,])
-clu_aver_3 <- rownames(dat_scl[ind4.aver == 3,])
-clu_aver_4 <- rownames(dat_scl[ind4.aver == 4,])
-length(clu_aver_1)
-length(clu_aver_2)
-length(clu_aver_3)
-length(clu_aver_4)
-
-clu_single_1 <- rownames(dat_scl[ind4.single == 1,])
-clu_single_2 <- rownames(dat_scl[ind4.single == 2,])
-clu_single_3 <- rownames(dat_scl[ind4.single == 3,])
-clu_single_4 <- rownames(dat_scl[ind4.single == 4,])
-length(clu_single_1)
-length(clu_single_2)
-length(clu_single_3)
-length(clu_single_4)
-
-clu_cen_1 <- rownames(dat_scl[ind4.cen == 1,])
-clu_cen_2 <- rownames(dat_scl[ind4.cen == 2,])
-clu_cen_3 <- rownames(dat_scl[ind4.cen == 3,])
-clu_cen_4 <- rownames(dat_scl[ind4.cen == 4,])
-length(clu_cen_1)
-length(clu_cen_2)
-length(clu_cen_3)
-length(clu_cen_4)
-```
-
-To display more details, we show the heatmap of the data.
-
-```{r, fig.width = 12, fig.height=7}
-display.brewer.all(n=NULL, type="all", select=NULL, exact.n=TRUE)
-col1 <- colorRampPalette(brewer.pal(9, "GnBu"))(100)
-col2 <- colorRampPalette(brewer.pal(3, "Spectral"))(2)
-
-heatmap.2(t(dat), 
-          col = col1, keysize=.8, key.par = list(cex=.5),
-          trace = "none", key = TRUE, cexCol = 0.75, 
-          labCol = as.character(dat[,1]),
-          ColSideColors = col2[as.numeric(dat[,"diagnosis"])+1],
-          margins = c(10, 10))
+c1 <- c(c1m,c1b)
+c2 <- c(c2m,c2b)
+sum <- c(c1m+c1b, c2m+c2b)
+c12 <- rbind(c1,c2)
+c12 <- cbind(c12,sum)
+colnames(c12) <- c("diagnosis = M","diagnosis = B","Total")
+rownames(c12) <- c("class 1","class 2")
+knitr::kable(as.data.frame(c12))
 ```
 
 # PCA
-
-The function `prcomp()` can be used to perform PCA.
-
 ```{r, fig.height=3}
-mean <- dat[1:10]
-diag <- dat[,31]
-mean_scl <- scale(mean)
+mean <- scale(dat[,1:10])
+se <- dat[,11:20] %>% scale()
+worst <- dat[,21:30] %>% scale()
 
-pca <- prcomp(dat_scl)
-pca$rotation
-pca$sdev
-pca$rotation %*% diag(pca$sdev)
-corrplot(pca$rotation %*% diag(pca$sdev))
+pca_m <- prcomp(mean)
+pca_m$rotation
+pca_m$sdev
+pca_m$rotation %*% diag(pca_m$sdev)
+corrplot(pca_m$rotation %*% diag(pca_m$sdev))
+var_m <- get_pca_var(pca_m)
+corrplot(var_m$cor)
 
-var <- get_pca_var(pca)
-corrplot(var$cor)
+pca_s <- prcomp(se)
+pca_s$rotation
+pca_s$sdev
+pca_s$rotation %*% diag(pca_s$sdev)
+corrplot(pca_s$rotation %*% diag(pca_s$sdev))
+var_s <- get_pca_var(pca_s)
+corrplot(var_s$cor)
+
+pca_w <- prcomp(worst)
+pca_w$rotation
+pca_w$sdev
+pca_w$rotation %*% diag(pca_w$sdev)
+corrplot(pca_w$rotation %*% diag(pca_w$sdev))
+var_w <- get_pca_var(pca_w)
+corrplot(var_w$cor)
 ```
 
-The function `fviz_eig()` plots the eigenvalues/variances against the number of dimensions. 
-
 ```{r, fig.height=4}
-fviz_eig(pca, addlabels = TRUE)
+fviz_eig(pca_m, addlabels = TRUE)
+fviz_eig(pca_s, addlabels = TRUE)
+fviz_eig(pca_w, addlabels = TRUE)
 ```
 
-
-The function `fviz_pca_biplot()` can be used to obtain the biplot of individuals and variables.
-
 ```{r, fig.height=4}
-fviz_pca_biplot(pca, axes = c(1,2),
-                habillage = ifelse(dat$Legendary==TRUE, "Legendary","Not legendary"),
-                label = c("var"),
+fviz_pca_biplot(pca_m, axes = c(1,2),
+                habillage = ifelse(dat$diagnosis == "1", "M","B"),
+                label = c("var_m"),
                 addEllipses = TRUE) 
 
-fviz_pca_var(pca, col.var = "steelblue", repel = TRUE)
-fviz_pca_ind(pca,
-             habillage = ifelse(dat$Legendary==TRUE,"Legendary","Not legendary"),
+fviz_pca_var(pca_m, col.var = "steelblue", repel = TRUE)
+fviz_pca_ind(pca_m,
+             habillage = ifelse(dat$diagnosis == "1", "M","B"),
              label = "none",
              addEllipses = TRUE)
 ```
 
+```{r, fig.height=4}
+fviz_pca_biplot(pca_s, axes = c(1,2),
+                habillage = ifelse(dat$diagnosis == "1", "M","B"),
+                label = c("var_s"),
+                addEllipses = TRUE) 
+
+fviz_pca_var(pca_s, col.var = "steelblue", repel = TRUE)
+fviz_pca_ind(pca_s,
+             habillage = ifelse(dat$diagnosis == "1", "M","B"),
+             label = "none",
+             addEllipses = TRUE)
+```
+
+```{r, fig.height=4}
+fviz_pca_biplot(pca_w, axes = c(1,2),
+                habillage = ifelse(dat$diagnosis == "1", "M","B"),
+                label = c("var_w"),
+                addEllipses = TRUE) 
+
+fviz_pca_var(pca_w, col.var = "steelblue", repel = TRUE)
+fviz_pca_ind(pca_w,
+             habillage = ifelse(dat$diagnosis == "1", "M","B"),
+             label = "none",
+             addEllipses = TRUE)
+```
