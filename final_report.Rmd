@@ -1,0 +1,73 @@
+---
+title: "Final Project Report"
+author: "Yijing Tao, Dantong Zhu, Yan Wang"
+date: '2022-05-12'
+output: word_document   
+---
+## Introduction
+
+Breast cancer is a disease in which cells in the breast grow out of control, and it counts for 15% of all cancer cases over the worlds, it's also the most common cancer among women. An very important thing for breast cancer is to classify the tumors as malignant or benign, which will be the key of out project.\
+
+The data set we are going to use contain 569 observations with 33 predicting variables and 1 response variable which is whether the tumor is classified as malignant or benign. The detailed explanation of each variable can be found in Table 1.
+
+From the 569 observations, we have 212 observations classified as malignant and 357 classified as benign. For the project, we will first try to using statistical modelling to predict the classification of the tumor, and then use clustering methods as a unsupervised leaning tool. 
+
+## Visualization of the Data Set
+
+
+
+
+## Models Training
+In this study, we can get a data frame which includes 1649 rows and 21 columns after omitting all of the NA values and the variable "Country". Then I randomly extracted 70% of the data to be train data and the 30% rest to be test data.
+
+To find out the relationship between different predictors and life expectancy, I decided first to find out the best fitted model. So I built KNN, linear regression, ridge, lasso, elastic net, PCR, PLS, GAM, MARS in total 9 models. In all of the model, I conducted 10-fold cross validation method to get a better model.
+
+## weakness of different models
+### KNN
+The first model I used to fit is KNN model. The weakness of KNN is\
+1. High computational complexity; high spatial complexity.\
+2. Low prediction accuracy for rare categories when the sample is not balanced\
+3. Poor interpretability, cannot give rules like decision trees.\
+In KNN model, the tuning parameter is "k", after training with the area (1,20), we can learn that the best tuning paremeter k is 12. Then I input the training data set and arrange y = life expectancy, x = 19 variables.\
+By calculating the test error using the test data set, we can find that the test error of the KNN model is extremely high. Therefore, I think the KNN model is not flexible enough to capture the underlying truth.
+
+### LM
+Then I used linear regression model, whose weakness is being difficult to interpret the correlation coefficient if the features are highly correlated.\
+Similar to KNN model, there is no any tuning parameters, so I simply input the training data set and arrange y and x.\
+By calculating the test error using the test data set, we can find that the test error of the linear regression model is also high. Therefore, I think this model is also not flexible enough to capture the underlying truth.
+
+### Ridge, Lasso and Elastic Net
+The weakness of ridge, lasso and elastic net model is introducing a small amount of bias into the model, but greatly reduces the variance.\
+Both Ridge and lasso has 1 tuning parameter $\lambda$, and elastic net model has 2 tuning parameters $\lambda$ and $\alpha$ (0-1). Based on the rule, I tried different area of lambda and finally decided to set -2 < $\lambda$ < 5 as the area of $\lambda$, and get the best tuning parameters $\lambda_{ridge} = 0.597$, $\lambda_{lasso} = 0.135$, $\lambda_{elastic net} = 0.135$, $\alpha_{elastic net} = 0.05$.\
+By calculating the test error using the test data set, we can find that the test errors of these 3 models are small. Therefore, I think these 3 models are also flexible enough to capture the underlying truth.
+
+###PCR and PLS
+In the PCR and PLS model, the tuning parameter is the number of predictors included in the final model (with the smallest RMSE). In the PCR model, all of the 18 predictors are considered to be included, while in the PLS model, the model including only 17 predictors has the smallest RMSE.\
+By calculating the test error using the test data set, we can find that the test errors of PCR and PLS model are small. Therefore, I think these models are flexible enough to capture the underlying truth.
+
+### GAM
+The weakness of GAM model is lack of parametric functional form makes it difficult to score the new data directly.
+The tuning parameter of GAM model is whether the "select". If it is "TRUE" then GAM can add an additional penalty variable to each semester so that it can be scored as zero. This means that the smoothing parameter estimate is part of the fit and can be completely removed from the terms in the model. If the corresponding smoothing parameter estimate is zero, then the additional penalty has no effect. In this project, the "select" is "FALSE".\
+By calculating the test error using the test data set, we can find that the test error of GAM model is small. Therefore, I think this model is flexible enough to capture the underlying truth.
+
+### MARS
+Although MARS has the weakness of requiring strict assumptions and the need to deal with outliers, MARS is not only highly adaptive compared to other methods, but also has a higher accuracy for model prediction. In the multidimensional case, due to the expansion of the sample space, how to divide the space becomes a crucial issue. MARS is a regression method with high generalization ability specifically for high-dimensional data. This regression method uses the tensor product of the spline function as the basis function, and the determination of the basis function (the number of tensor variables and the partition point of the variables) and the number of basis functions are done automatically by the data, without manual selection. \
+In MARS model, after trying several times, I decided to take degree = 1-5, nprune = 10-29 to be the area of the tuning parameters. After training the model with caret package, it is reported that degree = 2 and nprune = 26 is the best tuning parameters that will lead to a model with the smallest RMSE.\
+By calculating the test error using the test data set, we can find that the test error of MARS model is small. Therefore, I think this model is flexible enough to capture the underlying truth.
+
+## comparison
+To find out the best fitting model, I compared their goodness of fit by comparing the RMSE. 
+The result of the comparison through cross validation is below.
+
+From the comparison of both cross validation and the test error, we can find that the MARS model is the best model to our data set.
+
+## Important Predictors
+By making the vip importance plot of MARS model, we can find that changes in **"Income composition of resources", "Adult Mortality Rates", "HIV/AIDS", "Thinness 5-9 years", "Diphtheria", "Infant death", "Status(developing)"** and **"BMI"** will lead to an observable change in life expectancy. So these variables above play important roles in predicting the response.\
+The other variables seems have no observable relationship with life expectancy in this study. 
+
+From the slope of pdp partial plots and the coefficient, we can find than among the 8 important predictors, a higher "Adult Mortality Rates", "Infant death", "HIV/AIDS", and being a "developing" country will all lead to a lower life expectancy (the coefficient of "StatusDeveloping * h(Adult.Mortality-118)" is smaller than 0). \
+"Income composition of resources"(ICR), "BMI", "Diphtheria" and "Thinness 5-9 years"(T5.9Y) don't have a monotonous influence on life expectancy -- when the predictor is smaller than 0.3 and larger than 0.8, the increase of "ICR" will lead to a lower life expectancy while when "ICR" is large than 0.3 and smaller than 0.8, the increase of it will lead to a higher life expectancy. When "BMI" is smaller than 45, the increase of "BMI" will lead to a higher life expectancy while when "BMI" is large than 45, the increase of it will lead to a lower life expectancy. When "Diphtheria" is smaller than 60, the increase of "Diphtheria" will not lead to any change in life expectancy while when "Diphtheria" is large than 60, the increase of it will lead to a higher life expectancy. When "T5.9Y" is smaller than 5, the increase of "T5.9Y" will lead to a lower life expectancy while when "T5.9Y" is large than 5, the increase of it will only lead to a slightly increase in life expectancy.
+
+## Discussion
+Compared to the interpretation I have made in the visualization, some of the variables I thought would be important to the result, such as "Polio" and "GDP", was not included in the final model. However, in my own point of view, this might because the sample size is not large enough, or they are not as important as the 8 variables which are included in the final model, so I actually don't think this means that they are completely not related to the life expectancy.
+
