@@ -557,51 +557,6 @@ test_err_rate_rf = as.data.frame(1-rf_matrix$overall[1])[1,]
 test_err_rate_rf
 ```
 
-### AdaBoost
-
-```{r}
-gbmA.grid <- expand.grid(n.trees = c(4000,5000, 6000,7000),
-                         interaction.depth = 2:8,
-                         shrinkage = c(0.0005,0.001,0.002),
-                         n.minobsinnode = 1)
-set.seed(2022)
-gbmA.fit <- train(diagnosis ~ . , 
-                  train, 
-                  tuneGrid = gbmA.grid,
-                  trControl = ctrl,
-                  method = "gbm",
-                  distribution = "adaboost",
-                  metric = "ROC",
-                  verbose = FALSE)
-```
-
-
-```{r eval=FALSE, include=FALSE}
-save(gbmA.fit, file = "./result/model.gbmA.RData")
-
-load("./result/model.gbmA.RData")
-```
-
-```{r}
-ggplot(gbmA.fit, highlight = TRUE)
-
-train.pred.prob.gbmA <- predict(gbmA.fit, newdata = train)
-gbmA_matrix_train <- confusionMatrix(data = train.pred.prob.gbmA,
-                reference = train$diagnosis,
-                positive = "pos")
-
-train_err_rate_gbmA = as.data.frame(1-gbmA_matrix_train$overall[1])[1,]
-train_err_rate_gbmA
-
-test.pred.prob.gbmA <- predict(gbmA.fit, newdata = test)
-gbmA_matrix <- confusionMatrix(data = test.pred.prob.gbmA,
-                reference = test$diagnosis,
-                positive = "pos")
-
-test_err_rate_gbmA = as.data.frame(1-gbmA_matrix$overall[1])[1,]
-test_err_rate_gbmA
-```
-
 ## linear svm
 ```{r}
 # kernlab
@@ -896,82 +851,6 @@ c12 <- cbind(c12,sum)
 colnames(c12) <- c("diagnosis = M","diagnosis = B","Total")
 rownames(c12) <- c("class 1","class 2")
 knitr::kable(as.data.frame(c12))
-```
-
-# PCA
-```{r, fig.height=3}
-mean <- scale(dat[,1:10])
-se <- dat[,11:20] %>% scale()
-worst <- dat[,21:30] %>% scale()
-
-pca_m <- prcomp(mean)
-pca_m$rotation
-pca_m$sdev
-pca_m$rotation %*% diag(pca_m$sdev)
-corrplot(pca_m$rotation %*% diag(pca_m$sdev))
-var_m <- get_pca_var(pca_m)
-corrplot(var_m$cor)
-
-pca_s <- prcomp(se)
-pca_s$rotation
-pca_s$sdev
-pca_s$rotation %*% diag(pca_s$sdev)
-corrplot(pca_s$rotation %*% diag(pca_s$sdev))
-var_s <- get_pca_var(pca_s)
-corrplot(var_s$cor)
-
-pca_w <- prcomp(worst)
-pca_w$rotation
-pca_w$sdev
-pca_w$rotation %*% diag(pca_w$sdev)
-corrplot(pca_w$rotation %*% diag(pca_w$sdev))
-var_w <- get_pca_var(pca_w)
-corrplot(var_w$cor)
-```
-
-```{r, fig.height=4}
-fviz_eig(pca_m, addlabels = TRUE)
-fviz_eig(pca_s, addlabels = TRUE)
-fviz_eig(pca_w, addlabels = TRUE)
-```
-
-```{r, fig.height=4}
-fviz_pca_biplot(pca_m, axes = c(1,2),
-                habillage = ifelse(dat$diagnosis == "1", "M","B"),
-                label = c("var_m"),
-                addEllipses = TRUE) 
-
-fviz_pca_var(pca_m, col.var = "steelblue", repel = TRUE)
-fviz_pca_ind(pca_m,
-             habillage = ifelse(dat$diagnosis == "1", "M","B"),
-             label = "none",
-             addEllipses = TRUE)
-```
-
-```{r, fig.height=4}
-fviz_pca_biplot(pca_s, axes = c(1,2),
-                habillage = ifelse(dat$diagnosis == "1", "M","B"),
-                label = c("var_s"),
-                addEllipses = TRUE) 
-
-fviz_pca_var(pca_s, col.var = "steelblue", repel = TRUE)
-fviz_pca_ind(pca_s,
-             habillage = ifelse(dat$diagnosis == "1", "M","B"),
-             label = "none",
-             addEllipses = TRUE)
-```
-
-```{r, fig.height=4}
-fviz_pca_biplot(pca_w, axes = c(1,2),
-                habillage = ifelse(dat$diagnosis == "1", "M","B"),
-                label = c("var_w"),
-                addEllipses = TRUE) 
-
-fviz_pca_var(pca_w, col.var = "steelblue", repel = TRUE)
-fviz_pca_ind(pca_w,
-             habillage = ifelse(dat$diagnosis == "1", "M","B"),
-             label = "none",
-             addEllipses = TRUE)
 ```
 
 ## model comparing 
