@@ -1,7 +1,7 @@
 ---
-title: "Midterm Project"
-author: "Yijing Tao yt2785"
-date: '2022-03-16'
+title: "Final Project"
+author: "Yijing Tao yt2785, Yan Wang yw3773, Dantong Zhu dz2451"
+date: '2022-05-11'
 output: word_document
 ---
 
